@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     # ML Models
     ML_MODEL_PATH: str = "./models"
     ENABLE_ML_INFERENCE: bool = True
+    HF_TOKEN: Optional[str] = None
     
     # Alerting
     SMTP_HOST: Optional[str] = None
