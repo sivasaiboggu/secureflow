@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secureflow-frontend
+  namespace: default
+  labels:
+    app: secureflow-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: secureflow-frontend
+  template:
+    metadata:
+      labels:
+        app: secureflow-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: secureflow-frontend:latest
+        ports:
+        - containerPort: 3000
+        resources:
+          limits:
+            cpu: "500m"
+            memory: 512Mi
+          requests:
+            cpu: "250m"
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secureflow-frontend-svc
+spec:
+  selector:
+    app: secureflow-frontend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
+  type: LoadBalancer

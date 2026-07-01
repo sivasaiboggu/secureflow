@@ -1,0 +1,1 @@
+# Azure posture scanners package

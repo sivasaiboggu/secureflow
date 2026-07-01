@@ -1,0 +1,22 @@
+name: Security Auditing Scan
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Weekly scan
+  push:
+    branches: [ main ]
+
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Run Trivy vulnerability scanner on repository files
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        ignore-unfixed: true
+        format: 'table'
+        exit-code: '1'
+        severity: 'HIGH,CRITICAL'

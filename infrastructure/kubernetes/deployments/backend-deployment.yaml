@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secureflow-backend
+  namespace: default
+  labels:
+    app: secureflow-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: secureflow-backend
+  template:
+    metadata:
+      labels:
+        app: secureflow-backend
+    spec:
+      containers:
+      - name: backend
+        image: secureflow-backend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: secureflow-secrets
+              key: database-url
+        - name: REDIS_URL
+          value: "redis://secureflow-redis:6379/0"
+        - name: CELERY_BROKER_URL
+          value: "redis://secureflow-redis:6379/1"
+        - name: CELERY_RESULT_BACKEND
+          value: "redis://secureflow-redis:6379/2"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: "500m"
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secureflow-backend-svc
+spec:
+  selector:
+    app: secureflow-backend
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+  type: ClusterIP

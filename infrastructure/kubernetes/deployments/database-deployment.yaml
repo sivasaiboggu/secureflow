@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secureflow-db
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: secureflow-db
+  template:
+    metadata:
+      labels:
+        app: secureflow-db
+    spec:
+      containers:
+      - name: db
+        image: timescale/timescaledb:latest-pg15
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          value: postgres
+        - name: POSTGRES_DB:
+          value: secureflow
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secureflow-postgres-svc
+spec:
+  selector:
+    app: secureflow-db
+  ports:
+  - protocol: TCP
+    port: 5432
+    targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secureflow-redis
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: secureflow-redis
+  template:
+    metadata:
+      labels:
+        app: secureflow-redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        resources:
+          limits:
+            cpu: "500m"
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secureflow-redis
+spec:
+  selector:
+    app: secureflow-redis
+  ports:
+  - protocol: TCP
+    port: 6379
+    targetPort: 6379

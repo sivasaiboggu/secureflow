@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secureflow-worker
+  namespace: default
+  labels:
+    app: secureflow-worker
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: secureflow-worker
+  template:
+    metadata:
+      labels:
+        app: secureflow-worker
+    spec:
+      containers:
+      - name: worker
+        image: secureflow-backend:latest
+        command: ["celery", "-A", "app.tasks.celery_app", "worker", "--loglevel=info"]
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: secureflow-secrets
+              key: database-url
+        - name: REDIS_URL
+          value: "redis://secureflow-redis:6379/0"
+        - name: CELERY_BROKER_URL
+          value: "redis://secureflow-redis:6379/1"
+        - name: CELERY_RESULT_BACKEND
+          value: "redis://secureflow-redis:6379/2"
+        resources:
+          limits:
+            cpu: "2"
+            memory: 2Gi
+          requests:
+            cpu: "1"
+            memory: 1Gi
