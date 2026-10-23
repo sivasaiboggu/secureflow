@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from typing import List, Optional
 from functools import lru_cache
 
@@ -65,6 +66,24 @@ class Settings(BaseSettings):
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
     
+    @model_validator(mode="after")
+    def validate_production_signing_key(self):
+        # DEBUG=False is the existing documented production switch.
+        if not self.DEBUG:
+            if (
+                self.SECRET_KEY == Settings.model_fields["SECRET_KEY"].default
+                or len(self.SECRET_KEY.strip()) < 32
+                or self.SECRET_KEY.strip().lower() in {
+                    "your-super-secret-key-change-this-in-production",
+                    "change-this-secret-key-in-production",
+                }
+            ):
+                raise ValueError(
+                    "When DEBUG=False, set SECRET_KEY to a unique random value "
+                    "of at least 32 characters."
+                )
+        return self
+
     class Config:
         env_file = ".env"
         case_sensitive = True

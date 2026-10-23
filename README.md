@@ -80,3 +80,17 @@ SecureFlow uses advanced Deep Learning models (developed in PyTorch and HuggingF
 - **Vulnerability Severity Predictor**: A PyTorch Neural Network with self-attention layers that aggregates category states to predict exact CVSS threat scores (Critical, High, Medium, Low).
 - **Activity Anomaly Detector**: A PyTorch Autoencoder that measures reconstruction loss on cloud logs to isolate privilege escalations or exfiltration.
 - **NLP Threat Classifier**: A BERT classification model fine-tuned on system logs to search for attacker inputs and shell injections.
+
+## Production signing key guard
+
+`DEBUG=False` requires a unique random `SECRET_KEY` of at least 32 characters.
+The API refuses to start with its built-in demo key or a short/blank key.
+Generate your own key locally (for example, `openssl rand -hex 32`); do not commit it.
+This startup check does not make the application production-ready by itself.
+
+Configuration-only regression tests (no cloud/database required):
+
+```bash
+cd backend
+python -m unittest discover -s tests -p 'test_settings.py'
+```
