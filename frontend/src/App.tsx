@@ -125,7 +125,7 @@ const NavigationHeader: React.FC = () => {
   const handleLogout = () => { localStorage.clear(); navigate('/login'); };
 
   return (
-    <header style={navStyles.header}>
+    <header className="portfolio-nav" style={navStyles.header}>
       {/* Logo */}
       <div style={navStyles.logo}>
         <svg width="22" height="22" viewBox="0 0 40 40" fill="none">
@@ -136,7 +136,7 @@ const NavigationHeader: React.FC = () => {
       </div>
 
       {/* Nav links */}
-      <nav style={navStyles.nav}>
+      <nav className="portfolio-nav-links" style={navStyles.nav}>
         {NAV_ITEMS.map((item) => {
           const active = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
           return (

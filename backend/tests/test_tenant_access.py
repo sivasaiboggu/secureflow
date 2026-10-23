@@ -51,4 +51,17 @@ class TenantAccessTests(unittest.TestCase):
         self.assertEqual(self.db.query(Remediation).count(),0)
         self.assertNotEqual(self.db.query(Vulnerability).first().status,'REMEDIATED')
 
+    def test_plan_is_pending_and_does_not_claim_execution(self):
+        vuln=self.db.query(Vulnerability).first()
+        vuln.terraform_fix='resource "example" "synthetic" {}'
+        self.db.commit()
+        plan=self.service.apply_remediation(self.db,'vuln-b','user@test.invalid','org-b')
+        self.assertEqual(plan.status,'PENDING')
+        self.assertIsNone(plan.executed_at)
+        self.assertIsNone(plan.executed_by)
+        self.assertEqual(vuln.status,'OPEN')
+    def test_plan_without_code_is_rejected(self):
+        with self.assertRaises(ValueError):self.service.apply_remediation(self.db,'vuln-b','user@test.invalid','org-b')
+        self.assertEqual(self.db.query(Remediation).count(),0)
+
 if __name__=='__main__':unittest.main()

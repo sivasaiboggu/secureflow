@@ -83,21 +83,23 @@ class ScanService:
         if not vuln:
             raise ValueError('Finding not found.')
             
-        # Create a new remediation request
+        if not vuln.terraform_fix or not vuln.terraform_fix.strip():
+            raise ValueError('No Terraform template is available for review.')
+
+        # Save a plan for review; this service does not execute Terraform.
         rem_id = str(uuid.uuid4())
         remediation = Remediation(
             id=rem_id,
             vulnerability_id=vulnerability_id,
             remediation_type="TERRAFORM",
-            code=vuln.terraform_fix or "# No Terraform template provided",
-            status="APPLIED",
-            executed_by=user_email,
-            executed_at=datetime.utcnow()
+            code=vuln.terraform_fix,
+            status="PENDING",
+            executed_by=None,
+            executed_at=None
         )
         db.add(remediation)
         
-        # Mark vulnerability as resolved/remediated
-        vuln.status = "REMEDIATED"
+        # Leave the finding open until a separately verified repair is executed.
         db.commit()
         db.refresh(remediation)
         return remediation

@@ -166,3 +166,24 @@ html, body, #root {
   position: relative;
   z-index: 1;
 }
+
+/* Keep finding details and review-only controls reachable on narrow screens. */
+.finding-grid > * { min-width: 0; }
+.finding-header { gap: 16px; flex-wrap: wrap; }
+.finding-filters { flex-wrap: wrap; }
+@media (max-width: 700px) {
+  .finding-page { padding: 22px 14px !important; }
+  .finding-grid { grid-template-columns: minmax(0,1fr) !important; height: auto !important; min-height: 0 !important; }
+  .finding-grid > :first-child { max-height: 220px; }
+  .finding-grid > :nth-child(2) { padding: 20px 16px !important; overflow: visible !important; }
+  .finding-grid pre { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 700px) {
+  .portfolio-nav { height: auto !important; min-height: 56px; padding: 12px 14px !important; gap: 12px !important; flex-wrap: wrap; }
+  .portfolio-nav-links { order: 3; flex-basis: 100% !important; min-width: 0; overflow-x: auto; }
+  .portfolio-nav-links a { white-space: nowrap; flex-shrink: 0; }
+}
+@media (max-width: 700px) {
+  .portfolio-nav { position: relative !important; }
+}

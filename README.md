@@ -113,3 +113,10 @@ python -m unittest discover -s tests -p 'test_tenant_access.py'
 These tests do not execute cloud scans or Terraform. Existing remediation status
 semantics and demo-scan behavior still need separate review; an accepted request
 must not be described as a verified cloud repair.
+
+### Remediation plans are not cloud repairs
+
+The review-plan endpoint stores a PENDING Terraform template. It does not run
+Terraform, set an execution timestamp, or close the finding. A missing template
+is rejected. Existing historical APPLIED/REMEDIATED rows are not rewritten by
+this source change; their execution has not been independently verified.

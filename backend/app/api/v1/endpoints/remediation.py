@@ -11,7 +11,7 @@ router = APIRouter()
 
 @router.post("/apply", response_model=RemediationResponse)
 def apply_remediation_patch(payload: RemediationApply, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Applies auto-remediation (generating and running Terraform fixes) for a finding"""
+    """Saves a Terraform plan for review. Does not execute infrastructure changes."""
     try:
         remediation = scan_service.apply_remediation(db, payload.vulnerability_id, current_user.email, current_user.organization_id)
         return remediation
