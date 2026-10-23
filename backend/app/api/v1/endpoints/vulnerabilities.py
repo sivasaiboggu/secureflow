@@ -36,7 +36,7 @@ def get_vulnerability_details(
     current_user: User = Depends(get_current_user)
 ):
     """Retrieves full information for a security finding, including generated Terraform fix blocks"""
-    vuln = db.query(Vulnerability).filter(Vulnerability.id == vulnerability_id).first()
+    vuln = scan_service.get_vulnerability(db, vulnerability_id, current_user.organization_id)
     if not vuln:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found.")
     return vuln
@@ -49,7 +49,7 @@ def trigger_automated_remediation(
 ):
     """Executes automated remediation scripts (Terraform/Ansible) to repair security issues"""
     try:
-        remediation = scan_service.apply_remediation(db, payload.vulnerability_id, current_user.email)
+        remediation = scan_service.apply_remediation(db, payload.vulnerability_id, current_user.email, current_user.organization_id)
         return remediation
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

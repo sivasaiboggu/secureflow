@@ -94,3 +94,22 @@ Configuration-only regression tests (no cloud/database required):
 cd backend
 python -m unittest discover -s tests -p 'test_settings.py'
 ```
+
+## Tenant ownership checks
+
+Scan dispatch now requires an active cloud account belonging to the caller's
+organization. Finding reads and remediation requests are also scoped through
+the owning scan's organization. Worker lookups re-check the same organization
+and account relationship. Cross-tenant and inactive accounts fail before task
+dispatch. No database schema change is needed.
+
+SQLite service regressions (cloud/Celery dispatch mocked):
+
+```bash
+cd backend
+python -m unittest discover -s tests -p 'test_tenant_access.py'
+```
+
+These tests do not execute cloud scans or Terraform. Existing remediation status
+semantics and demo-scan behavior still need separate review; an accepted request
+must not be described as a verified cloud repair.

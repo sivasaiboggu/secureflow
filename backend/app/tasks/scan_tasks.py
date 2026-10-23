@@ -24,7 +24,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
     
     try:
         # 1. Retrieve Scan and Cloud Account records
-        scan = db.query(Scan).filter(Scan.id == scan_id).first()
+        scan = db.query(Scan).filter(Scan.id == scan_id, Scan.organization_id == organization_id, Scan.cloud_account_id == cloud_account_id).first()
         if not scan:
             logger.error(f"Scan {scan_id} not found in database.")
             return False
@@ -33,7 +33,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
         scan.progress = 5.0
         db.commit()
         
-        cloud_account = db.query(CloudAccount).filter(CloudAccount.id == cloud_account_id).first()
+        cloud_account = db.query(CloudAccount).filter(CloudAccount.id == cloud_account_id, CloudAccount.organization_id == organization_id, CloudAccount.is_active.is_(True)).first()
         if not cloud_account:
             raise Exception("Target cloud account credentials not found.")
             
@@ -205,7 +205,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
     except Exception as e:
         logger.error(f"Scan pipeline execution failed: {str(e)}", exc_info=True)
         try:
-            scan = db.query(Scan).filter(Scan.id == scan_id).first()
+            scan = db.query(Scan).filter(Scan.id == scan_id, Scan.organization_id == organization_id, Scan.cloud_account_id == cloud_account_id).first()
             if scan:
                 scan.status = "FAILED"
                 scan.completed_at = datetime.utcnow()

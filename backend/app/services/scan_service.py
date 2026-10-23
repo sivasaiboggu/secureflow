@@ -10,9 +10,13 @@ class ScanService:
     
     def trigger_scan(self, db: Session, cloud_account_id: str, organization_id: str) -> Scan:
         # Check cloud account existence
-        account = db.query(CloudAccount).filter(CloudAccount.id == cloud_account_id).first()
+        account = db.query(CloudAccount).filter(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == organization_id,
+            CloudAccount.is_active.is_(True),
+        ).first()
         if not account:
-            raise ValueError(f"Cloud account '{cloud_account_id}' does not exist.")
+            raise ValueError('Cloud account not found or inactive.')
             
         scan_id = str(uuid.uuid4())
         scan = Scan(
@@ -69,10 +73,15 @@ class ScanService:
             query = query.filter(Vulnerability.status == status.upper())
         return query.order_by(Vulnerability.cvss_score.desc()).offset(skip).limit(limit).all()
 
-    def apply_remediation(self, db: Session, vulnerability_id: str, user_email: str) -> Remediation:
-        vuln = db.query(Vulnerability).filter(Vulnerability.id == vulnerability_id).first()
+    def get_vulnerability(self, db: Session, vulnerability_id: str, organization_id: str) -> Optional[Vulnerability]:
+        return db.query(Vulnerability).join(Scan).filter(
+            Vulnerability.id == vulnerability_id, Scan.organization_id == organization_id
+        ).first()
+
+    def apply_remediation(self, db: Session, vulnerability_id: str, user_email: str, organization_id: str) -> Remediation:
+        vuln = self.get_vulnerability(db, vulnerability_id, organization_id)
         if not vuln:
-            raise ValueError(f"Vulnerability '{vulnerability_id}' not found.")
+            raise ValueError('Finding not found.')
             
         # Create a new remediation request
         rem_id = str(uuid.uuid4())

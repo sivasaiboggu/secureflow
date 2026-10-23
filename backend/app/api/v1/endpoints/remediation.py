@@ -13,7 +13,7 @@ router = APIRouter()
 def apply_remediation_patch(payload: RemediationApply, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Applies auto-remediation (generating and running Terraform fixes) for a finding"""
     try:
-        remediation = scan_service.apply_remediation(db, payload.vulnerability_id, current_user.email)
+        remediation = scan_service.apply_remediation(db, payload.vulnerability_id, current_user.email, current_user.organization_id)
         return remediation
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
