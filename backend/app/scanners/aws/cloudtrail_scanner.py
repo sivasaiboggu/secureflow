@@ -4,7 +4,7 @@ from datetime import datetime
 import logging
 import uuid
 from botocore.exceptions import ClientError
-from app.scanners.base import BaseScanner
+from app.scanners.base import BaseScanner, ScanUnavailable
 
 logger = logging.getLogger(__name__)
 
@@ -13,30 +13,13 @@ class CloudTrailScanner(BaseScanner):
     
     def __init__(self, organization_id: str, cloud_account_id: str, credentials: Dict[str, Any]):
         super().__init__(organization_id, cloud_account_id, credentials)
-        self.access_key = credentials.get("aws_access_key_id")
-        self.secret_key = credentials.get("aws_secret_access_key")
-        self.region = credentials.get("aws_default_region", "us-east-1")
-        
-        self.is_simulated = not (self.access_key and self.secret_key)
-        self.findings: List[Dict[str, Any]] = []
-        
-        if not self.is_simulated:
-            try:
-                self.session = boto3.Session(
-                    aws_access_key_id=self.access_key,
-                    aws_secret_access_key=self.secret_key,
-                    region_name=self.region
-                )
-                self.ct_client = self.session.client('cloudtrail')
-            except Exception as e:
-                logger.warning(f"Failed to initialize CloudTrail client: {e}. Simulating.")
-                self.is_simulated = True
+        self.ct_client = self.configure_aws_client("cloudtrail")
 
     def scan(self) -> List[Dict[str, Any]]:
         self.findings = []
         if self.is_simulated:
             logger.info("Executing simulated AWS CloudTrail scan...")
-            self.findings = self._generate_simulated_findings()
+            self.findings = self.demo_findings()
             return self.findings
             
         try:
@@ -55,10 +38,9 @@ class CloudTrailScanner(BaseScanner):
             else:
                 for trail in trails:
                     self.findings.extend(self._scan_trail(trail))
-        except ClientError as e:
-            logger.error(f"Error performing CloudTrail scan: {e}")
-            self.is_simulated = True
-            self.findings = self._generate_simulated_findings()
+        except Exception:
+            self.findings = []
+            raise ScanUnavailable("AWS scan failed. No verified result is available; check permissions and connectivity.") from None
             
         return self.findings
 

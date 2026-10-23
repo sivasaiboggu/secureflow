@@ -27,6 +27,7 @@ export const CloudAccounts: React.FC = () => {
   const [provider, setProvider] = useState('aws');
   const [accessKey, setAccessKey] = useState('');
   const [secretKey, setSecretKey] = useState('');
+  const [demo, setDemo] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,9 +49,9 @@ export const CloudAccounts: React.FC = () => {
     try {
       await api.post('/scans/cloud-accounts', {
         name, provider,
-        credentials: { aws_access_key_id: accessKey, aws_secret_access_key: secretKey }
+        credentials: demo ? { scan_mode: "demo" } : { scan_mode: "real", aws_access_key_id: accessKey, aws_secret_access_key: secretKey }
       });
-      setMessage('Cloud account registered successfully.');
+      setMessage(demo ? 'Demo account saved. Its findings are sample data, not an AWS assessment.' : 'Cloud account saved. Credentials have not yet been verified.');
       setName(''); setAccessKey(''); setSecretKey('');
       fetchAccounts();
     } catch (err: any) {
@@ -65,13 +66,13 @@ export const CloudAccounts: React.FC = () => {
   );
 
   return (
-    <div style={{ padding: '32px', maxWidth: 1400, margin: '0 auto' }}>
+    <div className="accounts-page" style={{ padding: '32px', maxWidth: 1400, margin: '0 auto' }}>
       <div style={{ marginBottom: 40 }}>
         <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.28em', textTransform: 'uppercase' as const, color: 'rgba(158,163,160,0.6)', marginBottom: 8 }}>INTEGRATIONS</p>
         <h1 style={{ fontFamily: '"Geist", sans-serif', fontSize: 32, fontWeight: 500, letterSpacing: '-0.04em', color: '#F4F0E8', margin: 0 }}>Cloud Accounts</h1>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 20, alignItems: 'start' }}>
+      <div className="accounts-grid" style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 20, alignItems: 'start' }}>
         {/* Form panel */}
         <div style={{ background: 'rgba(14,18,27,0.8)', backdropFilter: 'blur(24px)', border: '0.8px solid rgba(244,240,232,0.1)', borderRadius: 12, padding: 28 }}>
           <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase' as const, color: 'rgba(158,163,160,0.55)', marginBottom: 20 }}>REGISTER NEW ACCOUNT</p>
@@ -98,7 +99,7 @@ export const CloudAccounts: React.FC = () => {
             <div>
               <label style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase' as const, color: 'rgba(158,163,160,0.65)', display: 'block', marginBottom: 8 }}>Provider</label>
               <div style={{ display: 'flex', gap: 8 }}>
-                {['aws', 'gcp', 'azure'].map((p) => (
+                {['aws'].map((p) => (
                   <button key={p} type="button" onClick={() => setProvider(p)}
                     style={{
                       flex: 1, background: provider === p ? 'rgba(231,255,114,0.12)' : 'rgba(255,255,255,0.04)',
@@ -113,16 +114,21 @@ export const CloudAccounts: React.FC = () => {
               </div>
             </div>
 
+            <label style={{ display: 'flex', gap: 10, lineHeight: 1.6, fontSize: 13, color: '#F4F0E8' }}>
+              <input type="checkbox" checked={demo} onChange={e => setDemo(e.target.checked)} />
+              Use sample data (demo). No AWS access or security assessment.
+            </label>
+            <p style={{ color: '#9EA3A0', fontSize: 12, lineHeight: 1.6 }}>AWS only. Other providers are not ready. Live credentials are stored in the app database without application-level encryption. Use only a local test account until secret storage is hardened.</p>
             <div>
-              <label style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase' as const, color: 'rgba(158,163,160,0.65)', display: 'block', marginBottom: 8 }}>Access Key ID / Client ID</label>
-              <input value={accessKey} onChange={(e) => setAccessKey(e.target.value)}
+              <label htmlFor="aws-access-key" style={{ fontSize: 12, color: '#9EA3A0' }}>AWS access key ID</label>
+              <input id="aws-access-key" aria-label="AWS access key ID" required={!demo} disabled={demo} value={accessKey} onChange={(e) => setAccessKey(e.target.value)}
                 style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '0.8px solid rgba(244,240,232,0.15)', borderRadius: 10, padding: '11px 14px', fontSize: 12, fontFamily: '"Geist Mono", monospace', color: '#F4F0E8', outline: 'none', boxSizing: 'border-box' as const }}
                 placeholder="AKIA..." />
             </div>
 
             <div>
               <label style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase' as const, color: 'rgba(158,163,160,0.65)', display: 'block', marginBottom: 8 }}>Secret Access Key</label>
-              <input type="password" value={secretKey} onChange={(e) => setSecretKey(e.target.value)}
+              <input aria-label="AWS secret access key" required={!demo} disabled={demo} type="password" value={secretKey} onChange={(e) => setSecretKey(e.target.value)}
                 style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '0.8px solid rgba(244,240,232,0.15)', borderRadius: 10, padding: '11px 14px', fontSize: 12, fontFamily: '"Geist Mono", monospace', color: '#F4F0E8', outline: 'none', boxSizing: 'border-box' as const }}
                 placeholder="••••••••••••••••" />
             </div>
@@ -139,7 +145,7 @@ export const CloudAccounts: React.FC = () => {
         <div style={{ background: 'rgba(14,18,27,0.8)', backdropFilter: 'blur(24px)', border: '0.8px solid rgba(244,240,232,0.1)', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ padding: '20px 24px', borderBottom: '0.8px solid rgba(244,240,232,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase' as const, color: 'rgba(158,163,160,0.55)' }}>
-              {accounts.length} ACTIVE CONNECTIONS
+              {accounts.length} SAVED ACCOUNTS
             </p>
           </div>
 

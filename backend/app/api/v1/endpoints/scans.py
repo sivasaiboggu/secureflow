@@ -19,8 +19,8 @@ def trigger_new_scan(payload: ScanCreate, db: Session = Depends(get_db), current
         return scan
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to dispatch: {e}")
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not start the scan. Check its status before trying again.")
 
 @router.get("", response_model=List[ScanResponse])
 def get_scans_history(skip: int = 0, limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -28,17 +28,16 @@ def get_scans_history(skip: int = 0, limit: int = 50, db: Session = Depends(get_
     scans = scan_service.list_scans(db, current_user.organization_id, skip, limit)
     return scans
 
-@router.get("/{scan_id}", response_model=ScanResponse)
-def get_scan_details(scan_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Retrieves execution state, compliance score, and findings count of a specific scan"""
-    scan = scan_service.get_scan(db, scan_id)
-    if not scan or scan.organization_id != current_user.organization_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan record not found.")
-    return scan
-
 @router.post("/cloud-accounts", response_model=CloudAccountResponse)
 def register_cloud_account(payload: CloudAccountCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Saves connection credentials profile for AWS, GCP, or Azure environments"""
+    """Saves an AWS connector or explicit sample-data profile"""
+    if payload.provider.lower() != "aws":
+        raise HTTPException(status_code=400, detail="Only AWS connections are supported for scans.")
+    mode = payload.credentials.get("scan_mode", "real")
+    if mode not in ("real", "demo"):
+        raise HTTPException(status_code=400, detail="Scan mode must be real or demo.")
+    if mode == "real" and not (payload.credentials.get("aws_access_key_id") and payload.credentials.get("aws_secret_access_key")):
+        raise HTTPException(status_code=400, detail="AWS credentials are required unless demo mode is selected.")
     # Check if duplicate name
     dup = db.query(CloudAccount).filter(
         CloudAccount.name == payload.name,
@@ -53,7 +52,7 @@ def register_cloud_account(payload: CloudAccountCreate, db: Session = Depends(ge
         name=payload.name,
         provider=payload.provider.lower(),
         organization_id=current_user.organization_id,
-        credentials=payload.credentials,
+        credentials={"scan_mode": "demo"} if mode == "demo" else payload.credentials,
         is_active=True
     )
     db.add(account)
@@ -66,3 +65,12 @@ def list_cloud_accounts(db: Session = Depends(get_db), current_user: User = Depe
     """Returns active cloud connector credentials registered inside user's tenant organization"""
     accounts = db.query(CloudAccount).filter(CloudAccount.organization_id == current_user.organization_id).all()
     return accounts
+
+
+@router.get("/{scan_id}", response_model=ScanResponse)
+def get_scan_details(scan_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Retrieves execution state, compliance score, and findings count of a specific scan"""
+    scan = scan_service.get_scan(db, scan_id)
+    if not scan or scan.organization_id != current_user.organization_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan record not found.")
+    return scan

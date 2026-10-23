@@ -24,8 +24,8 @@ class TenantAccessTests(unittest.TestCase):
         self.db=sessionmaker(bind=self.engine)()
         self.service=ScanService()
         self.db.add_all([Organization(id='org-a',name='A'),Organization(id='org-b',name='B')])
-        self.db.add_all([CloudAccount(id='account-a',name='A',provider='aws',organization_id='org-a',credentials={},is_active=True),
-            CloudAccount(id='account-b',name='B',provider='aws',organization_id='org-b',credentials={},is_active=True),
+        self.db.add_all([CloudAccount(id='account-a',name='A',provider='aws',organization_id='org-a',credentials={"scan_mode":"demo"},is_active=True),
+            CloudAccount(id='account-b',name='B',provider='aws',organization_id='org-b',credentials={"scan_mode":"demo"},is_active=True),
             CloudAccount(id='inactive-a',name='Off',provider='aws',organization_id='org-a',credentials={},is_active=False)])
         self.db.add(Scan(id='scan-b',organization_id='org-b',cloud_account_id='account-b'))
         self.db.add(Vulnerability(id='vuln-b',scan_id='scan-b',resource_id='bucket',resource_type='s3',vulnerability_type='PUBLIC',severity='HIGH',cvss_score=8,title='Finding',description='Demo'))
@@ -43,6 +43,29 @@ class TenantAccessTests(unittest.TestCase):
         scan=self.service.trigger_scan(self.db,'account-a','org-a')
         self.assertEqual(scan.organization_id,'org-a')
         task_module.run_cloud_scan_task.delay.assert_called_once_with(scan.id,'account-a','org-a')
+    def test_missing_real_credentials_rejected_before_record_or_dispatch(self):
+        self.db.query(CloudAccount).filter_by(id='account-a').first().credentials={}
+        self.db.commit()
+        with self.assertRaises(ValueError): self.service.trigger_scan(self.db,'account-a','org-a')
+        task_module.run_cloud_scan_task.delay.assert_not_called()
+        self.assertEqual(self.db.query(Scan).count(),1)
+
+    def test_broker_failure_creates_failed_record_without_untracked_thread(self):
+        task_module.run_cloud_scan_task.delay.side_effect=RuntimeError('synthetic broker down')
+        try:
+            with self.assertRaises(ValueError): self.service.trigger_scan(self.db,'account-a','org-a')
+            failed=self.db.query(Scan).filter_by(organization_id='org-a').one()
+            self.assertEqual(failed.status,'FAILED')
+            self.assertIsNotNone(failed.completed_at)
+        finally:
+            task_module.run_cloud_scan_task.delay.side_effect=None
+
+    def test_unsupported_provider_rejected_before_dispatch(self):
+        self.db.query(CloudAccount).filter_by(id='account-a').first().provider='azure'
+        self.db.commit()
+        with self.assertRaises(ValueError): self.service.trigger_scan(self.db,'account-a','org-a')
+        task_module.run_cloud_scan_task.delay.assert_not_called()
+
     def test_cross_tenant_finding_cannot_be_read(self):
         self.assertIsNone(self.service.get_vulnerability(self.db,'vuln-b','org-a'))
         self.assertEqual(self.service.get_vulnerability(self.db,'vuln-b','org-b').id,'vuln-b')

@@ -120,3 +120,43 @@ The review-plan endpoint stores a PENDING Terraform template. It does not run
 Terraform, set an execution timestamp, or close the finding. A missing template
 is rejected. Existing historical APPLIED/REMEDIATED rows are not rewritten by
 this source change; their execution has not been independently verified.
+
+### Scan truthfulness checkpoint
+
+AWS demo data is now an explicit connector choice (`credentials.scan_mode =
+"demo"`). Missing credentials, client setup errors and provider read failures
+never switch a real AWS scan into a simulated success. Demo findings carry a
+`[DEMO]` title and synthetic evidence, and the scan ends as `DEMO_COMPLETED`.
+Other providers are not wired into the worker, so new non-AWS scans are rejected.
+Existing stored rows have not been relabeled or migrated.
+
+A failed resource check fails the run rather than reporting an unverified clean
+result. A completed run covers only the implemented checks. Pagination,
+region/account-wide coverage and policy-condition interpretation still need
+review; this is not a complete compliance audit. Existing cloud credentials
+remain stored as JSON in the application database without application-level
+encryption. Do not connect sensitive production credentials before hardening
+secret storage. No cloud scans or repairs were performed during this change.
+
+The broker failure path no longer creates an untracked local thread. An ambiguous
+queue failure leaves a failed scan record; inspect it before retrying. Findings
+receive per-run database IDs so a later scan cannot move an earlier scan's
+findings. Alert records now claim only the in-app channel actually implemented,
+not external Slack delivery.
+
+Regression checks (synthetic SDK clients and SQLite, no cloud calls):
+
+```sh
+cd backend
+python -m unittest discover -s tests -v
+cd ../frontend
+npm run build
+```
+
+Optional UI checks use Playwright Core and a local Chrome installation. Install
+it in a separate test workspace, start the frontend at port 8767, then set
+`NODE_PATH` to that workspace's `node_modules` and run
+`node tests/demo-modes.cjs`. `BASE_URL`, `CHROME_BIN` and `SCREENSHOT_DIR` can
+override the defaults. All API replies in this check are synthetic; it verifies
+the demo payload, disabled secret fields, status labels and mobile overflow, not
+an actual AWS scan.

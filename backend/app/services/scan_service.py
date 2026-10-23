@@ -18,6 +18,15 @@ class ScanService:
         if not account:
             raise ValueError('Cloud account not found or inactive.')
             
+        credentials = account.credentials or {}
+        if account.provider.lower() != "aws":
+            raise ValueError("Only AWS scans are supported. Other providers are not ready.")
+        mode = credentials.get("scan_mode", "real")
+        if mode not in ("real", "demo"):
+            raise ValueError("Scan mode must be real or demo.")
+        if mode == "real" and not (credentials.get("aws_access_key_id") and credentials.get("aws_secret_access_key")):
+            raise ValueError("AWS credentials are missing. Choose an explicit demo account for sample data.")
+
         scan_id = str(uuid.uuid4())
         scan = Scan(
             id=scan_id,
@@ -30,23 +39,15 @@ class ScanService:
         db.commit()
         db.refresh(scan)
         
-        # Dispatch to background queue, fallback to local thread if broker is offline
-        import logging
-        logger = logging.getLogger(__name__)
+        # Never spawn an untracked scan thread after an ambiguous broker error.
         try:
             run_cloud_scan_task.delay(scan_id, cloud_account_id, organization_id)
-        except Exception as e:
-            logger.warning(f"Celery broker offline: {e}. Executing scan via local background thread.")
-            import threading
-            # Call the task function directly inside a background thread
-            thread = threading.Thread(
-                target=run_cloud_scan_task,
-                args=(None, scan_id, cloud_account_id, organization_id),
-                kwargs={}
-            )
-            thread.daemon = True
-            thread.start()
-        
+        except Exception:
+            scan.status = "FAILED"
+            scan.completed_at = datetime.utcnow()
+            db.commit()
+            raise ValueError("The scan queue is unavailable. Check this scan before trying again.") from None
+
         # Update last scanned at timestamp
         account.last_scanned_at = datetime.utcnow()
         db.commit()

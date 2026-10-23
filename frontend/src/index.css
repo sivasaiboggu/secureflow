@@ -187,3 +187,25 @@ html, body, #root {
 @media (max-width: 700px) {
   .portfolio-nav { position: relative !important; }
 }
+
+.accounts-grid > * { min-width: 0; }
+@media (max-width: 850px) {
+  .accounts-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .accounts-page, .scan-page { padding: 22px 14px !important; }
+  .scan-header { flex-wrap: wrap; gap: 18px; }
+}
+@media (max-width: 700px) {
+  .scan-page table, .scan-page tbody { display: block; }
+  .scan-page thead { display: none; }
+  .scan-page tbody tr { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); padding: 10px; }
+  .scan-page tbody td { display: block; min-width: 0 !important; padding: 9px !important; overflow-wrap: anywhere; }
+  .scan-page tbody td::before { display: block; font: 9px 'Geist Mono',monospace; color: #9EA3A0; margin-bottom: 8px; }
+  .scan-page tbody td:nth-child(1)::before { content: 'SCAN'; }
+  .scan-page tbody td:nth-child(2)::before { content: 'ACCOUNT'; }
+  .scan-page tbody td:nth-child(3) { grid-column: 1 / -1; }
+  .scan-page tbody td:nth-child(3)::before { content: 'STATUS'; }
+  .scan-page tbody td:nth-child(4)::before { content: 'PROGRESS'; }
+  .scan-page tbody td:nth-child(5)::before { content: 'FINDINGS'; }
+  .scan-page tbody td:nth-child(6) { grid-column: 1 / -1; }
+  .scan-page tbody td:nth-child(6)::before { content: 'STARTED'; }
+}

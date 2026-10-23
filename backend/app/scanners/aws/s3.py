@@ -4,40 +4,23 @@ from datetime import datetime
 import logging
 import uuid
 from botocore.exceptions import ClientError
-from app.scanners.base import BaseScanner
+from app.scanners.base import BaseScanner, ScanUnavailable
 
 logger = logging.getLogger(__name__)
 
 class S3Scanner(BaseScanner):
-    """AWS S3 Security Scanner - Production Implementation with fallback simulator"""
+    """AWS S3 Security Scanner - AWS checks with an explicit demo mode"""
     
     def __init__(self, organization_id: str, cloud_account_id: str, credentials: Dict[str, Any]):
         super().__init__(organization_id, cloud_account_id, credentials)
-        self.access_key = credentials.get("aws_access_key_id")
-        self.secret_key = credentials.get("aws_secret_access_key")
-        self.region = credentials.get("aws_default_region", "us-east-1")
-        
-        self.is_simulated = not (self.access_key and self.secret_key)
-        self.findings: List[Dict[str, Any]] = []
-        
-        if not self.is_simulated:
-            try:
-                self.session = boto3.Session(
-                    aws_access_key_id=self.access_key,
-                    aws_secret_access_key=self.secret_key,
-                    region_name=self.region
-                )
-                self.s3_client = self.session.client('s3')
-            except Exception as e:
-                logger.warning(f"Failed to initialize real boto3 S3 client: {e}. Falling back to simulation.")
-                self.is_simulated = True
+        self.s3_client = self.configure_aws_client("s3")
 
     def scan(self) -> List[Dict[str, Any]]:
         """Scan all S3 buckets for security issues"""
         self.findings = []
         if self.is_simulated:
             logger.info("Executing simulated AWS S3 Scan (No credentials provided)...")
-            self.findings = self._generate_simulated_findings()
+            self.findings = self.demo_findings()
             return self.findings
             
         try:
@@ -48,10 +31,9 @@ class S3Scanner(BaseScanner):
                 bucket_name = bucket['Name']
                 bucket_vulns = self._scan_bucket(bucket_name)
                 self.findings.extend(bucket_vulns)
-        except ClientError as e:
-            logger.error(f"Error listing AWS S3 buckets: {e}")
-            self.is_simulated = True
-            self.findings = self._generate_simulated_findings()
+        except Exception:
+            self.findings = []
+            raise ScanUnavailable("AWS scan failed. No verified result is available; check permissions and connectivity.") from None
             
         return self.findings
 
@@ -151,6 +133,8 @@ class S3Scanner(BaseScanner):
                     self._gen_block_tf(bucket_name),
                     {"error": "NoSuchPublicAccessBlockConfiguration"}
                 )
+            else:
+                raise ScanUnavailable("An AWS resource check could not be completed.") from None
         return None
 
     def _check_encryption(self, bucket_name: str) -> Optional[Dict[str, Any]]:
@@ -167,6 +151,8 @@ class S3Scanner(BaseScanner):
                     f'resource "aws_s3_bucket_server_side_encryption_configuration" "{bucket_name.replace(".", "_")}" {{\n  bucket = "{bucket_name}"\n  rule {{\n    apply_server_side_encryption_by_default {{\n      sse_algorithm = "AES256"\n    }}\n  }}\n}}',
                     {"error": "ServerSideEncryptionConfigurationNotFoundError"}
                 )
+            else:
+                raise ScanUnavailable("An AWS resource check could not be completed.") from None
         return None
 
     def _check_versioning(self, bucket_name: str) -> Optional[Dict[str, Any]]:
@@ -184,7 +170,7 @@ class S3Scanner(BaseScanner):
                     {"current_status": status}
                 )
         except Exception as e:
-            logger.error(f"Error versioning check: {e}")
+            raise ScanUnavailable("An AWS resource check could not be completed.") from None
         return None
 
     def _check_logging(self, bucket_name: str) -> Optional[Dict[str, Any]]:
@@ -201,7 +187,7 @@ class S3Scanner(BaseScanner):
                     {"logging_enabled": False}
                 )
         except Exception as e:
-            logger.error(f"Error checking logging: {e}")
+            raise ScanUnavailable("An AWS resource check could not be completed.") from None
         return None
 
     def _check_bucket_acl(self, bucket_name: str) -> List[Dict[str, Any]]:
@@ -226,7 +212,7 @@ class S3Scanner(BaseScanner):
                             {"grant": grant, "permission": permission}
                         ))
         except Exception as e:
-            logger.error(f"Error ACL check: {e}")
+            raise ScanUnavailable("An AWS resource check could not be completed.") from None
         return vulns
 
     def _check_bucket_policy(self, bucket_name: str) -> List[Dict[str, Any]]:
@@ -250,9 +236,9 @@ class S3Scanner(BaseScanner):
                         ))
         except ClientError as e:
             if e.response['Error']['Code'] != 'NoSuchBucketPolicy':
-                logger.error(f"Bucket policy error: {e}")
+                raise ScanUnavailable("An AWS resource check could not be completed.") from None
         except Exception as e:
-            logger.error(f"Parse error bucket policy: {e}")
+            raise ScanUnavailable("An AWS resource check could not be completed.") from None
         return vulns
 
     def _check_ssl_enforcement(self, bucket_name: str) -> Optional[Dict[str, Any]]:
@@ -289,6 +275,8 @@ class S3Scanner(BaseScanner):
                     self._gen_ssl_policy_tf(bucket_name),
                     {"ssl_enforced": False, "error": "NoSuchBucketPolicy"}
                 )
+            else:
+                raise ScanUnavailable("An AWS resource check could not be completed.") from None
         return None
 
     def _create_finding(self, name: str, vtype: str, sev: str, score: float, title: str, desc: str, rec: str, frameworks: List[str], tf_fix: str, evidence: Dict[str, Any]) -> Dict[str, Any]:

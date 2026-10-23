@@ -131,7 +131,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
                 critical_count += 1
                 
             vuln_obj = Vulnerability(
-                id=finding["id"],
+                id=str(uuid.uuid4()),
                 scan_id=scan_id,
                 resource_type=finding["resource_type"],
                 resource_id=finding["resource_id"],
@@ -160,14 +160,14 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
         
         for check in compliance_checks:
             check_obj = ComplianceCheck(
-                id=check["id"],
+                id=str(uuid.uuid4()),
                 scan_id=scan_id,
                 framework=check["framework"],
                 control_id=check["control_id"],
                 title=check["title"],
                 status=check["status"],
                 resource_id=check["resource_id"],
-                evidence=check["evidence"]
+                evidence={**check["evidence"], "scan_mode": credentials.get("scan_mode", "real"), "synthetic": credentials.get("scan_mode") == "demo"}
             )
             db.add(check_obj)
             if check["status"] == "PASS":
@@ -175,23 +175,22 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
             else:
                 failed_checks += 1
                 
-        # 5. Trigger Slack / Email Alerts for Critical/High findings
+        # 5. Save an in-app alert for critical findings
         if critical_count > 0:
             alert = Alert(
                 id=str(uuid.uuid4()),
                 organization_id=organization_id,
                 severity="CRITICAL",
-                title="Critical Vulnerability Posture Alert",
-                message=f"Scan completed with {critical_count} CRITICAL findings. Immediate remediation recommended.",
-                channels_sent=["WEBPAGE", "SLACK"],
+                title="[DEMO] Sample Posture Alert" if credentials.get("scan_mode") == "demo" else "Critical Vulnerability Posture Alert",
+                message=(f"Sample scan produced {critical_count} synthetic CRITICAL findings. No cloud assessment was performed." if credentials.get("scan_mode") == "demo" else f"Scan completed with {critical_count} CRITICAL findings. Review the findings and coverage before planning remediation."),
+                channels_sent=["WEBPAGE"],
                 status="ACTIVE"
             )
             db.add(alert)
-            # Slack/email notifier calls would invoke here
-            logger.warning(f"CRITICAL POSTURE DETECTED: {critical_count} items. Notification sent.")
+            logger.warning(f"CRITICAL POSTURE DETECTED: {critical_count} items. In-app alert saved; no external notification sent.")
 
         # 6. Finalize Scan Record
-        scan.status = "COMPLETED"
+        scan.status = "DEMO_COMPLETED" if credentials.get("scan_mode") == "demo" else "COMPLETED"
         scan.progress = 100.0
         scan.vulnerabilities_found = len(findings)
         scan.failed_checks = failed_checks
@@ -205,6 +204,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
     except Exception as e:
         logger.error(f"Scan pipeline execution failed: {str(e)}", exc_info=True)
         try:
+            db.rollback()
             scan = db.query(Scan).filter(Scan.id == scan_id, Scan.organization_id == organization_id, Scan.cloud_account_id == cloud_account_id).first()
             if scan:
                 scan.status = "FAILED"

@@ -19,6 +19,7 @@ interface CloudAccount {
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const map: Record<string, { bg: string; color: string }> = {
+    DEMO_COMPLETED: { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24' },
     COMPLETED: { bg: 'rgba(231,255,114,0.12)', color: '#E7FF72' },
     RUNNING: { bg: 'rgba(6,182,212,0.12)', color: '#06B6D4' },
     PENDING: { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24' },
@@ -95,9 +96,9 @@ export const ScanList: React.FC = () => {
   );
 
   return (
-    <div style={{ padding: '32px', maxWidth: 1400, margin: '0 auto' }}>
+    <div className="scan-page" style={{ padding: '32px', maxWidth: 1400, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
+      <div className="scan-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
         <div>
           <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.28em', textTransform: 'uppercase' as const, color: 'rgba(158,163,160,0.6)', marginBottom: 8 }}>CLOUD INFRASTRUCTURE</p>
           <h1 style={{ fontFamily: '"Geist", sans-serif', fontSize: 32, fontWeight: 500, letterSpacing: '-0.04em', color: '#F4F0E8', margin: 0 }}>Compliance Scans</h1>
@@ -115,8 +116,9 @@ export const ScanList: React.FC = () => {
         </button>
       </div>
 
+      <p role="note" style={{ color: '#b9c0bc', lineHeight: 1.7, fontSize: 13, marginBottom: 20 }}>Demo results are sample data, never a verified cloud assessment. Failed scans have no complete result. A completed scan covers only the implemented checks, not a full compliance audit.</p>
       {/* Scans Table */}
-      <div style={{ background: 'rgba(14,18,27,0.8)', backdropFilter: 'blur(24px)', border: '0.8px solid rgba(244,240,232,0.1)', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ background: 'rgba(14,18,27,0.8)', backdropFilter: 'blur(24px)', border: '0.8px solid rgba(244,240,232,0.1)', borderRadius: 12, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '0.8px solid rgba(244,240,232,0.07)' }}>
@@ -129,7 +131,7 @@ export const ScanList: React.FC = () => {
             {scans.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ padding: '48px', textAlign: 'center' as const, fontFamily: '"Geist Mono", monospace', fontSize: 11, letterSpacing: '0.14em', color: 'rgba(158,163,160,0.4)', textTransform: 'uppercase' as const }}>
-                  No scans found — trigger your first scan to begin posture analysis
+                  No scans found - trigger your first scan to begin posture analysis
                 </td>
               </tr>
             ) : scans.map((scan) => (
@@ -151,7 +153,7 @@ export const ScanList: React.FC = () => {
                 </td>
                 <td style={{ padding: '16px 20px' }}>
                   <span style={{ fontFamily: '"Geist", sans-serif', fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', color: scan.vulnerabilities_found > 0 ? '#fb923c' : '#4ade80' }}>
-                    {scan.vulnerabilities_found}
+                    {scan.status === 'COMPLETED' || scan.status === 'DEMO_COMPLETED' ? scan.vulnerabilities_found : '-'}
                   </span>
                 </td>
                 <td style={{ padding: '16px 20px', fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'rgba(158,163,160,0.55)' }}>
@@ -166,7 +168,7 @@ export const ScanList: React.FC = () => {
       {/* Modal */}
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(8,11,18,0.8)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'rgba(14,18,27,0.95)', border: '0.8px solid rgba(244,240,232,0.15)', borderRadius: 16, padding: 36, width: 400, boxShadow: 'rgba(0,0,0,0.6) 0px 24px 80px' }}>
+          <div style={{ background: 'rgba(14,18,27,0.95)', border: '0.8px solid rgba(244,240,232,0.15)', borderRadius: 16, padding: 24, width: 400, maxWidth: 'calc(100vw - 28px)', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'rgba(0,0,0,0.6) 0px 24px 80px' }}>
             <h2 style={{ fontFamily: '"Geist", sans-serif', fontSize: 22, fontWeight: 500, letterSpacing: '-0.03em', color: '#F4F0E8', marginBottom: 6 }}>Start Cloud Scan</h2>
             <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'rgba(158,163,160,0.6)', letterSpacing: '0.1em', marginBottom: 28 }}>SELECT TARGET CLOUD ACCOUNT</p>
 
@@ -179,7 +181,7 @@ export const ScanList: React.FC = () => {
               <option value="" style={{ background: '#0e121b' }}>Select account...</option>
               {accounts.map((acc) => (
                 <option key={acc.id} value={acc.id} style={{ background: '#0e121b' }}>
-                  {acc.name} — {acc.provider.toUpperCase()}
+                  {acc.name} - {acc.provider.toUpperCase()}
                 </option>
               ))}
             </select>
