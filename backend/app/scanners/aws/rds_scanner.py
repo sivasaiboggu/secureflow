@@ -5,6 +5,7 @@ import logging
 import uuid
 from botocore.exceptions import ClientError
 from app.scanners.base import BaseScanner, ScanUnavailable
+from app.scanners.pagination import aws_items
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class RDSScanner(BaseScanner):
             return self.findings
             
         try:
-            instances = self.rds_client.describe_db_instances().get("DBInstances", [])
+            instances = aws_items(self.rds_client, "describe_db_instances", "DBInstances", request_token="Marker", response_token="Marker")
             for db_inst in instances:
                 self.findings.extend(self._scan_db_instance(db_inst))
         except Exception:

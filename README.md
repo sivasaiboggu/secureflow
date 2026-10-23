@@ -160,3 +160,15 @@ it in a separate test workspace, start the frontend at port 8767, then set
 override the defaults. All API replies in this check are synthetic; it verifies
 the demo payload, disabled secret fields, status labels and mobile overflow, not
 an actual AWS scan.
+
+### AWS pagination checkpoint
+
+The implemented S3 bucket, EC2 instance, IAM user/MFA/access-key, RDS instance,
+Lambda function, VPC and VPC flow-log listings now follow their SDK continuation
+tokens. Repeated or missing continuation tokens, a 1,000-page limit, and errors
+on later pages fail the run instead of publishing a partial clean result. Tests
+use synthetic clients and botocore Stubber only, with no AWS requests. CloudTrail
+`describe_trails` has no pagination token; it remains the existing regional
+check. This does not add account/region discovery, organization-wide coverage,
+full policy interpretation or every AWS service. Database credentials remain
+unencrypted at application level. No claim of a complete compliance audit.

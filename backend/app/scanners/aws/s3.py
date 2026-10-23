@@ -5,6 +5,7 @@ import logging
 import uuid
 from botocore.exceptions import ClientError
 from app.scanners.base import BaseScanner, ScanUnavailable
+from app.scanners.pagination import aws_items
 
 logger = logging.getLogger(__name__)
 
@@ -19,12 +20,12 @@ class S3Scanner(BaseScanner):
         """Scan all S3 buckets for security issues"""
         self.findings = []
         if self.is_simulated:
-            logger.info("Executing simulated AWS S3 Scan (No credentials provided)...")
+            logger.info("Executing explicitly selected demo AWS S3 scan...")
             self.findings = self.demo_findings()
             return self.findings
             
         try:
-            buckets = self.s3_client.list_buckets().get('Buckets', [])
+            buckets = list(aws_items(self.s3_client, 'list_buckets', 'Buckets', request_token='ContinuationToken', response_token='ContinuationToken'))
             logger.info(f"Scanning {len(buckets)} AWS S3 buckets...")
             
             for bucket in buckets:

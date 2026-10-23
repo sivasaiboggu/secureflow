@@ -5,6 +5,7 @@ import logging
 import uuid
 from botocore.exceptions import ClientError
 from app.scanners.base import BaseScanner, ScanUnavailable
+from app.scanners.pagination import aws_items
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class IAMScanner(BaseScanner):
             return self.findings
             
         try:
-            users = self.iam_client.list_users().get("Users", [])
+            users = list(aws_items(self.iam_client, "list_users", "Users", request_token="Marker", response_token="Marker", truncated_key="IsTruncated"))
             logger.info(f"Scanning {len(users)} AWS IAM Users...")
             
             for user in users:
@@ -65,7 +66,7 @@ class IAMScanner(BaseScanner):
         
         # Check 1: MFA Enrollment
         try:
-            mfa_devices = self.iam_client.list_mfa_devices(UserName=user_name).get("MFADevices", [])
+            mfa_devices = list(aws_items(self.iam_client, "list_mfa_devices", "MFADevices", request_token="Marker", response_token="Marker", truncated_key="IsTruncated", UserName=user_name))
             if not mfa_devices:
                 findings.append(self._create_finding(
                     user_name, user_name, "IAM_USER_MFA_DISABLED", "HIGH", 8.0,
@@ -81,7 +82,7 @@ class IAMScanner(BaseScanner):
             
         # Check 2: Access Key Age / Rotation
         try:
-            keys = self.iam_client.list_access_keys(UserName=user_name).get("AccessKeyMetadata", [])
+            keys = list(aws_items(self.iam_client, "list_access_keys", "AccessKeyMetadata", request_token="Marker", response_token="Marker", truncated_key="IsTruncated", UserName=user_name))
             for key in keys:
                 key_id = key.get("AccessKeyId")
                 create_date = key.get("CreateDate")

@@ -5,6 +5,7 @@ import logging
 import uuid
 from botocore.exceptions import ClientError
 from app.scanners.base import BaseScanner, ScanUnavailable
+from app.scanners.pagination import aws_items
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class VPCScanner(BaseScanner):
             return self.findings
             
         try:
-            vpcs = self.ec2_client.describe_vpcs().get("Vpcs", [])
+            vpcs = aws_items(self.ec2_client, "describe_vpcs", "Vpcs")
             for vpc in vpcs:
                 self.findings.extend(self._scan_vpc(vpc))
         except Exception:
@@ -73,9 +74,8 @@ class VPCScanner(BaseScanner):
             
         # Check 2: VPC Flow Logs not enabled
         try:
-            flow_logs = self.ec2_client.describe_flow_logs(
-                Filter=[{'Name': 'resource-id', 'Values': [vpc_id]}]
-            ).get("FlowLogs", [])
+            flow_logs = list(aws_items(self.ec2_client, "describe_flow_logs", "FlowLogs",
+                Filter=[{'Name': 'resource-id', 'Values': [vpc_id]}]))
             if not flow_logs:
                 findings.append(self._create_finding(
                     vpc_id, arn, "VPC_FLOW_LOGS_DISABLED", "MEDIUM", 5.2,

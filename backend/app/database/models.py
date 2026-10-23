@@ -35,7 +35,7 @@ class CloudAccount(Base):
     name = Column(String(100), nullable=False)
     provider = Column(String(20), nullable=False)  # aws, gcp, azure
     organization_id = Column(String(50), ForeignKey("organizations.id"), nullable=False)
-    credentials = Column(JSON, nullable=False)  # Encrypted credentials or resource configuration
+    credentials = Column(JSON, nullable=False)  # Connector JSON; currently not encrypted at application level
     is_active = Column(Boolean, default=True)
     last_scanned_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

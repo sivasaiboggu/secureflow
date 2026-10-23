@@ -5,6 +5,7 @@ import logging
 import uuid
 from botocore.exceptions import ClientError
 from app.scanners.base import BaseScanner, ScanUnavailable
+from app.scanners.pagination import aws_items
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class LambdaScanner(BaseScanner):
             return self.findings
             
         try:
-            functions = self.lambda_client.list_functions().get("Functions", [])
+            functions = aws_items(self.lambda_client, "list_functions", "Functions", request_token="Marker", response_token="NextMarker")
             for fn in functions:
                 self.findings.extend(self._scan_function(fn))
         except Exception:

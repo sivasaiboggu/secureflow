@@ -5,6 +5,7 @@ import logging
 import uuid
 from botocore.exceptions import ClientError
 from app.scanners.base import BaseScanner, ScanUnavailable
+from app.scanners.pagination import aws_items
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,7 @@ class EC2Scanner(BaseScanner):
             return self.findings
             
         try:
-            instances = self.ec2_client.describe_instances()
-            for reservation in instances.get("Reservations", []):
+            for reservation in aws_items(self.ec2_client, "describe_instances", "Reservations"):
                 for inst in reservation.get("Instances", []):
                     self.findings.extend(self._scan_instance(inst))
         except Exception:
