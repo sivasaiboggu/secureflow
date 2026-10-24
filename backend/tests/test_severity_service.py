@@ -27,3 +27,21 @@ class SeverityServiceTests(unittest.TestCase):
     def test_invalid_cvss_is_not_mapped_to_a_plausible_tier(self):
         for score in [None,True,'9',float('nan'),float('inf'),-1,11]:
             with self.assertRaises(ValueError):self.service.predict_severity('S3','PUBLIC','aws',score,.85)
+
+
+    def test_missing_anomaly_model_is_unavailable_not_normal(self):
+        self.service.anomaly_detector.autoencoder=None
+        self.service.anomaly_detector.isolation_forest=None
+        result=self.service.analyze_api_logs([0]*8)
+        self.assertIsNone(result['is_anomaly']);self.assertIsNone(result['anomaly_score'])
+        self.assertIn('No assessment',result['error'])
+        self.service.anomaly_detector.predict_anomaly.assert_not_called()
+
+    def test_anomaly_input_and_detector_output_must_be_finite(self):
+        for values in [[],[0]*7,[0]*9,[float('nan')]*8,[float('inf')]*8]:
+            with self.assertRaises(ValueError):self.service.analyze_api_logs(values)
+        self.service.anomaly_detector.predict_anomaly.return_value=(False,float('nan'))
+        with self.assertRaises(ValueError):self.service.analyze_api_logs([0]*8)
+        self.service.anomaly_detector.predict_anomaly.return_value=(True,.4)
+        result=self.service.analyze_api_logs([0]*8)
+        self.assertTrue(result['is_anomaly']);self.assertFalse(result['calibrated'])

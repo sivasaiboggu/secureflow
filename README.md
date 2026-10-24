@@ -247,3 +247,12 @@ estimate, marks calibration false and leaves unavailable explanations empty.
 Two isolated regressions cover thresholds and invalid scores. These are not
 verified exploitability predictions or proof of a security incident. The separate
 model-training code is retained but is not used to override scanner severity.
+
+
+### Unavailable anomaly detection
+
+The metric-analysis service returns an explicit unavailable/error response when
+local detector artifacts are absent, not a fabricated normal score of0.02. Inputs
+must have eight finite values and detector outputs must be finite before being
+returned. Two isolated tests cover availability and numeric boundaries. Valid
+output remains uncalibrated and is not a verified incident assessment.

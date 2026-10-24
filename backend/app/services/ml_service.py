@@ -38,13 +38,23 @@ class MLService:
         }
 
     def analyze_api_logs(self, api_metrics: List[float]) -> Dict[str, Any]:
-        """Evaluates whether API sequence is anomalous using the autoencoder & Isolation Forest"""
-        sample = np.array([api_metrics], dtype=np.float32)
-        is_anomaly, score = self.anomaly_detector.predict_anomaly(sample)
+        """An unavailable detector must never report normal behavior."""
+        sample = np.asarray(api_metrics, dtype=np.float64)
+        if sample.shape != (8,) or not np.isfinite(sample).all():
+            raise ValueError("Exactly eight finite numeric metrics are required.")
+        detector = self.anomaly_detector
+        if detector.autoencoder is None or detector.isolation_forest is None:
+            return {
+                "is_anomaly": None, "anomaly_score": None,
+                "method": "unavailable", "calibrated": False,
+                "error": "No local anomaly model is available. No assessment was performed."
+            }
+        is_anomaly, score = detector.predict_anomaly(sample.reshape(1, -1))
+        if not isinstance(is_anomaly, (bool, np.bool_)) or not isinstance(score, (int, float)) or not np.isfinite(score) or score < 0:
+            raise ValueError("Anomaly detector returned an invalid assessment.")
         return {
-            "is_anomaly": is_anomaly,
-            "anomaly_score": score,
-            "algorithm": "Autoencoder + Isolation Forest"
+            "is_anomaly": bool(is_anomaly), "anomaly_score": float(score),
+            "algorithm": "Autoencoder + Isolation Forest", "calibrated": False
         }
 
     def scan_log_for_threats(self, log_payload: str) -> Dict[str, Any]:
