@@ -213,3 +213,14 @@ still future work. No production credential or database was touched here.
 
 Run `python -m unittest discover -s tests -v` from `backend`. Tests use disposable
 keys, synthetic credentials, SQLite and mocked scanners/dispatch only.
+
+
+### Scan delivery idempotency checkpoint
+
+Workers atomically claim only PENDING/FAILED scans and clear stale completion
+metadata. Already-completed deliveries do not rescan or create duplicate results;
+a RUNNING scan is not taken over by a second delivery. Three additional isolated
+SQLite tests cover those boundaries. This is not a complete broker exactly-once
+or crash-recovery protocol: a worker crash can leave RUNNING stuck and needs an
+operator-reviewed recovery path. No automatic timeout takeover is implemented,
+and distributed PostgreSQL/Celery concurrency still needs staging validation.

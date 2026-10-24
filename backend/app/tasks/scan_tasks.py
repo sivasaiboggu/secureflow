@@ -23,6 +23,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
     """Asynchronous orchestrator for scanning cloud targets and calculating security posture metrics"""
     logger.info(f"Starting async cloud posture scan | Scan ID: {scan_id}")
     db = SessionLocal()
+    owns_scan = False
     
     try:
         # 1. Retrieve Scan and Cloud Account records
@@ -31,10 +32,23 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
             logger.error(f"Scan {scan_id} not found in database.")
             return False
             
-        scan.status = "RUNNING"
-        scan.progress = 5.0
+        if scan.status in ("COMPLETED", "DEMO_COMPLETED"):
+            # Broker redelivery after a committed result must not create another
+            # set of random-ID findings, checks or alerts.
+            return True
+        claimed = db.query(Scan).filter(
+            Scan.id == scan_id,
+            Scan.organization_id == organization_id,
+            Scan.cloud_account_id == cloud_account_id,
+            Scan.status.in_(["PENDING", "FAILED"]),
+        ).update({"status": "RUNNING", "progress": 5.0, "completed_at": None}, synchronize_session=False)
         db.commit()
-        
+        if claimed != 1:
+            # Another worker owns RUNNING, or the status is not executable.
+            return False
+        owns_scan = True
+        db.refresh(scan)
+
         cloud_account = db.query(CloudAccount).filter(CloudAccount.id == cloud_account_id, CloudAccount.organization_id == organization_id, CloudAccount.is_active.is_(True)).first()
         if not cloud_account:
             raise Exception("Target cloud account credentials not found.")
@@ -208,7 +222,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
         try:
             db.rollback()
             scan = db.query(Scan).filter(Scan.id == scan_id, Scan.organization_id == organization_id, Scan.cloud_account_id == cloud_account_id).first()
-            if scan:
+            if scan and owns_scan:
                 scan.status = "FAILED"
                 scan.completed_at = datetime.utcnow()
                 db.commit()

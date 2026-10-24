@@ -86,3 +86,23 @@ class WorkerTests(unittest.TestCase):
                 self.worker.run_cloud_scan_task(context,'one','account','org')
         for scanner in self.scanners:scanner.assert_not_called()
         db=self.session();self.assertEqual(db.get(Scan,'one').status,'FAILED');db.close()
+
+
+    def test_completed_redelivery_does_not_rescan_or_duplicate_results(self):
+        self.assertTrue(self.worker.run_cloud_scan_task(Mock(),'one','account','org'))
+        for scanner in self.scanners: scanner.reset_mock()
+        self.assertTrue(self.worker.run_cloud_scan_task(Mock(),'one','account','org'))
+        for scanner in self.scanners: scanner.assert_not_called()
+        db=self.session();self.assertEqual(db.get(Scan,'one').status,'DEMO_COMPLETED');db.close()
+
+    def test_running_scan_is_not_claimed_by_another_delivery(self):
+        db=self.session();row=db.get(Scan,'one');row.status='RUNNING';row.progress=35;db.commit();db.close()
+        self.assertFalse(self.worker.run_cloud_scan_task(Mock(),'one','account','org'))
+        for scanner in self.scanners:scanner.assert_not_called()
+        db=self.session();self.assertEqual(db.get(Scan,'one').progress,35);db.close()
+
+    def test_failed_scan_can_retry_and_clear_stale_completion_time(self):
+        from datetime import datetime
+        db=self.session();row=db.get(Scan,'one');row.status='FAILED';row.completed_at=datetime(2020,1,1);db.commit();db.close()
+        self.assertTrue(self.worker.run_cloud_scan_task(Mock(),'one','account','org'))
+        db=self.session();row=db.get(Scan,'one');self.assertEqual(row.status,'DEMO_COMPLETED');self.assertGreater(row.completed_at,datetime(2020,1,1));db.close()
