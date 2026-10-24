@@ -75,10 +75,10 @@ To configure, compile, train the AI models, and run the database and dashboard l
 
 ## 🧠 AI/ML Engine Models
 
-SecureFlow uses advanced Deep Learning models (developed in PyTorch and HuggingFace Transformers) to replace static threshold classifications:
+Runtime review rules and separate model-development code have different roles:
 
-- **Vulnerability Severity Predictor**: A PyTorch Neural Network with self-attention layers that aggregates category states to predict exact CVSS threat scores (Critical, High, Medium, Low).
-- **Activity Anomaly Detector**: A PyTorch Autoencoder that measures reconstruction loss on cloud logs to isolate privilege escalations or exfiltration.
+- **Scanner severity at runtime**: Explicit CVSS threshold review rule (Critical, High, Medium, Low), no calibrated confidence or model explanation. Separate PyTorch severity-training code is retained for experiments, not used for scanner scoring.
+- **Activity Anomaly Detector**: Separate autoencoder/Isolation Forest development code. Availability and validity of local trained artifacts must be checked; an output is not proof of privilege escalation or exfiltration.
 - **NLP Threat Classifier**: Keyword rules or a locally trained TF-IDF backup by default. No BERT fine-tuning experiment is included or claimed. Optional transformer loading requires an explicitly enabled local checkpoint with normal/threat labels and complete weights.
 
 ## Production signing key guard

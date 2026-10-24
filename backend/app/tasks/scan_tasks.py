@@ -127,13 +127,13 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
         else:
             raise NotImplementedError(f"Cloud provider {provider} scanner not implemented yet.")
             
-        # 3. Post-Process Findings with the Neural ML severity model
-        logger.info(f"Processing {len(findings)} findings through security ML classifier...")
+        # 3. Apply the explicit CVSS severity review rule
+        logger.info(f"Processing {len(findings)} findings through CVSS severity review rule...")
         saved_vulnerabilities = []
         critical_count = 0
         
         for idx, finding in enumerate(findings):
-            # Query PyTorch neural model for refined severity rating
+            # The service returns rule provenance, not a model-calibrated finding.
             prediction = ml_service.predict_severity(
                 resource_type=finding["resource_type"],
                 vuln_type=finding["vulnerability_type"],
@@ -153,7 +153,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
                 resource_id=finding["resource_id"],
                 resource_name=finding["resource_name"],
                 vulnerability_type=finding["vulnerability_type"],
-                severity=ml_severity,  # AI-determined severity
+                severity=ml_severity,  # CVSS threshold review tier
                 title=finding["title"],
                 description=finding["description"],
                 recommendation=finding["recommendation"],
