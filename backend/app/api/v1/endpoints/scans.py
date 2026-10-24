@@ -7,7 +7,7 @@ from app.config.database import get_db
 from app.api.deps import get_current_user
 from app.database.models import User, CloudAccount, Scan
 from app.schemas.scan import ScanCreate, ScanResponse, CloudAccountCreate, CloudAccountResponse
-from app.services.scan_service import scan_service
+from app.services.scan_service import scan_service, ScanDispatchUnknown
 
 from app.security.credential_store import seal_credentials, CredentialStorageError
 
@@ -19,6 +19,11 @@ def trigger_new_scan(payload: ScanCreate, db: Session = Depends(get_db), current
     try:
         scan = scan_service.trigger_scan(db, payload.cloud_account_id, current_user.organization_id)
         return scan
+    except ScanDispatchUnknown as error:
+        raise HTTPException(status_code=503, detail={
+            "code": "QUEUE_ACCEPTANCE_UNKNOWN", "scan_id": error.scan_id,
+            "message": str(error)
+        }) from None
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception:

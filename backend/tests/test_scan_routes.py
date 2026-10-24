@@ -16,7 +16,8 @@ from app.database.models import Organization, CloudAccount
 class ScanRouteTests(unittest.TestCase):
     def setUp(self):
         deps=types.ModuleType('app.api.deps');deps.get_current_user=lambda: types.SimpleNamespace(organization_id='org')
-        service=types.ModuleType('app.services.scan_service');service.scan_service=Mock()
+        service=types.ModuleType('app.services.scan_service');service.scan_service=Mock();service.ScanDispatchUnknown=type('ScanDispatchUnknown',(RuntimeError,),{})
+        self.service=service
         with patch.dict(sys.modules,{'app.api.deps':deps,'app.services.scan_service':service}):
             path=Path(__file__).parents[1]/'app/api/v1/endpoints/scans.py'
             spec=importlib.util.spec_from_file_location('test_real_scan_routes',path)
@@ -63,3 +64,13 @@ class ScanRouteTests(unittest.TestCase):
             listed=self.client.get('/scans/cloud-accounts')
             self.assertNotIn('ciphertext',listed.text)
             self.assertNotIn('credentials',listed.text)
+
+
+    def test_ambiguous_dispatch_returns_recovery_id_and_service_unavailable(self):
+        error=self.service.ScanDispatchUnknown('Queue acceptance could not be confirmed.')
+        error.scan_id='synthetic-scan'
+        self.service.scan_service.trigger_scan.side_effect=error
+        response=self.client.post('/scans',json={'cloud_account_id':'synthetic-account'})
+        self.assertEqual(response.status_code,503,response.text)
+        self.assertEqual(response.json()['detail']['code'],'QUEUE_ACCEPTANCE_UNKNOWN')
+        self.assertEqual(response.json()['detail']['scan_id'],'synthetic-scan')

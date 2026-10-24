@@ -6,6 +6,14 @@ from app.database.models import Scan, CloudAccount, Vulnerability, ComplianceChe
 from app.tasks.scan_tasks import run_cloud_scan_task
 from app.security.credential_store import open_credentials
 
+class ScanDispatchUnknown(RuntimeError):
+    """The broker response did not establish whether a job was accepted."""
+
+    def __init__(self, scan_id: str):
+        self.scan_id = scan_id
+        super().__init__('Queue acceptance could not be confirmed. Check this scan before trying again.')
+
+
 class ScanService:
     """Business logic orchestrator managing scanning runs, fetching findings, and remediations"""
     
@@ -44,10 +52,10 @@ class ScanService:
         try:
             run_cloud_scan_task.delay(scan_id, cloud_account_id, organization_id)
         except Exception:
-            scan.status = "FAILED"
-            scan.completed_at = datetime.utcnow()
-            db.commit()
-            raise ValueError("The scan queue is unavailable. Check this scan before trying again.") from None
+            # A publish response can be lost after acceptance. Do not overwrite
+            # RUNNING/completed worker state or label an unconfirmed job failed.
+            db.rollback()
+            raise ScanDispatchUnknown(scan_id) from None
 
         # Update last scanned at timestamp
         account.last_scanned_at = datetime.utcnow()

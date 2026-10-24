@@ -15,7 +15,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.config.database import Base
 from app.database.models import Organization, CloudAccount, Scan, Vulnerability, Remediation
-from app.services.scan_service import ScanService
+from app.services.scan_service import ScanService, ScanDispatchUnknown
 
 class TenantAccessTests(unittest.TestCase):
     def setUp(self):
@@ -50,13 +50,14 @@ class TenantAccessTests(unittest.TestCase):
         task_module.run_cloud_scan_task.delay.assert_not_called()
         self.assertEqual(self.db.query(Scan).count(),1)
 
-    def test_broker_failure_creates_failed_record_without_untracked_thread(self):
+    def test_broker_failure_preserves_pending_record_without_untracked_thread(self):
         task_module.run_cloud_scan_task.delay.side_effect=RuntimeError('synthetic broker down')
         try:
-            with self.assertRaises(ValueError): self.service.trigger_scan(self.db,'account-a','org-a')
+            with self.assertRaises(ScanDispatchUnknown) as caught: self.service.trigger_scan(self.db,'account-a','org-a')
             failed=self.db.query(Scan).filter_by(organization_id='org-a').one()
-            self.assertEqual(failed.status,'FAILED')
-            self.assertIsNotNone(failed.completed_at)
+            self.assertEqual(failed.status,'PENDING')
+            self.assertIsNone(failed.completed_at)
+            self.assertEqual(caught.exception.scan_id,failed.id)
         finally:
             task_module.run_cloud_scan_task.delay.side_effect=None
 
@@ -107,4 +108,16 @@ class TenantAccessTests(unittest.TestCase):
             scan=self.service.trigger_scan(self.db,'account-a','org-a')
         task_module.run_cloud_scan_task.delay.assert_called_once_with(scan.id,'account-a','org-a')
 
-if __name__=='__main__':unittest.main()
+
+
+    def test_lost_publish_response_does_not_overwrite_worker_completion(self):
+        def accepted_then_lost(scan_id,*_):
+            self.db.query(Scan).filter_by(id=scan_id).update({'status':'DEMO_COMPLETED','progress':100})
+            self.db.commit()
+            raise RuntimeError('synthetic lost response')
+        task_module.run_cloud_scan_task.delay.side_effect=accepted_then_lost
+        try:
+            with self.assertRaises(ScanDispatchUnknown):self.service.trigger_scan(self.db,'account-a','org-a')
+            row=self.db.query(Scan).filter_by(organization_id='org-a').one()
+            self.assertEqual(row.status,'DEMO_COMPLETED');self.assertEqual(row.progress,100)
+        finally:task_module.run_cloud_scan_task.delay.side_effect=None

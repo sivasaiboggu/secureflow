@@ -224,3 +224,14 @@ SQLite tests cover those boundaries. This is not a complete broker exactly-once
 or crash-recovery protocol: a worker crash can leave RUNNING stuck and needs an
 operator-reviewed recovery path. No automatic timeout takeover is implemented,
 and distributed PostgreSQL/Celery concurrency still needs staging validation.
+
+
+### Ambiguous scan dispatch
+
+A broker publish exception no longer marks a scan FAILED: acceptance may already
+have happened, and a fast worker may already be RUNNING or completed. The API
+returns503 with QUEUE_ACCEPTANCE_UNKNOWN and the owned scan ID, preserving the
+record for status inspection instead of spawning a fallback or dispatching again.
+Synthetic service/route tests cover a lost publish response after completion.
+This does not prove broker acceptance or implement a durable outbox; PENDING
+records after ambiguity still need operator reconciliation before retrying.
