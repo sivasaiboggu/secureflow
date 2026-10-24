@@ -52,7 +52,9 @@ class MLService:
         return {
             "is_threat": is_threat,
             "confidence": confidence,
-            "classification": "SUSPICIOUS" if is_threat else "NORMAL"
+            "classification": "SUSPICIOUS" if is_threat else "NORMAL",
+            "method": self.threat_classifier.method,
+            "calibrated": False
         }
 
 ml_service = MLService()

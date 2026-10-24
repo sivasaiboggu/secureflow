@@ -1,6 +1,6 @@
 # SecureFlow - AI-Powered Cloud Security Posture Management (CSPM)
 
-SecureFlow is an industrial-grade, production-ready Cloud Security Posture Management (CSPM) system. It features real-time cloud scanning, automated Terraform code remediations, and advanced Deep Learning models for threat scoring, log classifications, and network anomalies.
+SecureFlow is a local cloud-security research prototype. It includes AWS listing/check workflows, explicit sample-data demos and review-only Terraform plans. It is not production-ready or a complete cloud compliance audit. No automatic cloud repairs are verified. Credential storage and policy/region coverage still need hardening.
 
 ---
 
@@ -79,7 +79,7 @@ SecureFlow uses advanced Deep Learning models (developed in PyTorch and HuggingF
 
 - **Vulnerability Severity Predictor**: A PyTorch Neural Network with self-attention layers that aggregates category states to predict exact CVSS threat scores (Critical, High, Medium, Low).
 - **Activity Anomaly Detector**: A PyTorch Autoencoder that measures reconstruction loss on cloud logs to isolate privilege escalations or exfiltration.
-- **NLP Threat Classifier**: A BERT classification model fine-tuned on system logs to search for attacker inputs and shell injections.
+- **NLP Threat Classifier**: Keyword rules or a locally trained TF-IDF backup by default. No BERT fine-tuning experiment is included or claimed. Optional transformer loading requires an explicitly enabled local checkpoint with normal/threat labels and complete weights.
 
 ## Production signing key guard
 
@@ -172,3 +172,18 @@ use synthetic clients and botocore Stubber only, with no AWS requests. CloudTrai
 check. This does not add account/region discovery, organization-wide coverage,
 full policy interpretation or every AWS service. Database credentials remain
 unencrypted at application level. No claim of a complete compliance audit.
+
+### Threat-model safety checkpoint
+
+A base BERT checkpoint can initialize a random classification head. This must not
+be treated as trained security inference. Default startup no longer loads or
+downloads that base model. `ENABLE_THREAT_MODEL=true` and `THREAT_MODEL_PATH`
+opt in to an already-local reviewed checkpoint with exactly `{0: "normal",
+1: "threat"}` labels and no missing/mismatched weights. These guards do not prove
+training quality or calibration. Log responses include `method` and
+`calibrated: false`; rule confidence values are heuristic, not measured accuracy.
+Only load locally trusted model/pickle artifacts; this is not an artifact sandbox.
+
+Offline model-load regressions: `python -m unittest discover -s tests -p
+ 'test_threat_model_safety.py' -v` from backend (numpy required). No model download
+or cloud action is part of those tests.

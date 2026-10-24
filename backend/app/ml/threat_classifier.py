@@ -5,7 +5,7 @@ from typing import Dict, Any, Tuple
 
 # Try loading HuggingFace transformers
 try:
-    from transformers import AutoTokenizer, AutoModelForSequenceClassification
+    from transformers import AutoConfig, AutoTokenizer, AutoModelForSequenceClassification
     import torch
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
@@ -21,6 +21,7 @@ class ThreatClassifier:
         self.backup_vectorizer = None
         self.backup_classifier = None
         self.is_transformer_loaded = False
+        self.method = "heuristic_keywords"
         
     def fit_backup(self, texts: list, labels: list):
         """Fits a classic NLP classifier (TF-IDF + LogisticRegression) for fast local fallbacks"""
@@ -40,19 +41,35 @@ class ThreatClassifier:
             pickle.dump(self.backup_classifier, f)
 
     def load(self) -> bool:
-        # 1. Attempt loading Transformer model
-        if TRANSFORMERS_AVAILABLE:
+        # Base BERT has no trained threat head. Never download it and treat a
+        # randomly initialized classifier as a security model. Explicit opt-in
+        # requires a locally reviewed classifier with semantic binary labels.
+        self.is_transformer_loaded = False
+        self.tokenizer = None
+        self.model = None
+        self.backup_vectorizer = None
+        self.backup_classifier = None
+        self.method = "heuristic_keywords"
+        model_name = os.getenv("THREAT_MODEL_PATH", "").strip()
+        if TRANSFORMERS_AVAILABLE and model_name and os.getenv("ENABLE_THREAT_MODEL", "false").lower() == "true":
             try:
-                # Using a tiny 17MB model (prajjwal1/bert-tiny) for rapid CPU inference
-                model_name = "prajjwal1/bert-tiny"
-                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-                self.model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+                config = AutoConfig.from_pretrained(model_name, local_files_only=True)
+                if config.id2label != {0: "normal", 1: "threat"}:
+                    raise ValueError("Expected explicit normal/threat label mapping")
+                self.tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
+                self.model, loading = AutoModelForSequenceClassification.from_pretrained(
+                    model_name, local_files_only=True, output_loading_info=True
+                )
+                if loading.get("missing_keys") or loading.get("mismatched_keys"):
+                    raise ValueError("Incomplete threat-model weights")
                 self.model.eval()
                 self.is_transformer_loaded = True
+                self.method = "configured_local_threat_model"
                 return True
-            except Exception as e:
-                print(f"HuggingFace model load failed, checking backup: {e}")
-                
+            except Exception:
+                self.tokenizer = None
+                self.model = None
+
         # 2. Load classic backup pipeline
         v_path = os.path.join(self.model_dir, "vectorizer.pkl")
         c_path = os.path.join(self.model_dir, "classifier.pkl")
@@ -62,9 +79,11 @@ class ThreatClassifier:
                     self.backup_vectorizer = pickle.load(f)
                 with open(c_path, 'rb') as f:
                     self.backup_classifier = pickle.load(f)
+                self.method = "local_tfidf_classifier"
                 return True
-            except Exception as e:
-                print(f"Error loading backup classifier: {e}")
+            except Exception:
+                self.backup_vectorizer = None
+                self.backup_classifier = None
         return False
 
     def predict_threat(self, log_line: str) -> Tuple[bool, float]:
@@ -77,7 +96,10 @@ class ThreatClassifier:
                     logits = self.model(**inputs).logits
                     probs = torch.softmax(logits, dim=1).numpy()[0]
                     # Index 1 = Suspicious / Threat
+                    if not np.isfinite(probs).all() or len(probs) != 2:
+                        raise ValueError("Invalid threat probability output")
                     is_suspicious = bool(np.argmax(probs) == 1)
+                    self.method = "configured_local_threat_model"
                     confidence = float(probs[1] if is_suspicious else probs[0])
                     return is_suspicious, round(confidence, 4)
             except Exception as e:
@@ -89,12 +111,16 @@ class ThreatClassifier:
                 X = self.backup_vectorizer.transform([log_line])
                 probs = self.backup_classifier.predict_proba(X)[0]
                 pred = bool(self.backup_classifier.predict(X)[0] == 1)
+                if not np.isfinite(probs).all() or len(probs) != 2:
+                    raise ValueError("Invalid backup output")
+                self.method = "local_tfidf_classifier"
                 confidence = float(probs[1] if pred else probs[0])
                 return pred, round(confidence, 4)
             except Exception as e:
                 print(f"Backup inference error: {e}")
                 
         # Basic heuristic fallback
+        self.method = "heuristic_keywords"
         suspicious_keywords = ["admin", "root", "unauthorized", "login_failed", "delete_bucket", "put_bucket_policy", "assume_role"]
         has_kw = any(kw in log_line.lower() for kw in suspicious_keywords)
         return has_kw, 0.72 if has_kw else 0.95
