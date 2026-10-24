@@ -256,3 +256,13 @@ local detector artifacts are absent, not a fabricated normal score of0.02. Input
 must have eight finite values and detector outputs must be finite before being
 returned. Two isolated tests cover availability and numeric boundaries. Valid
 output remains uncalibrated and is not a verified incident assessment.
+
+
+### Explicit database selection
+
+The backend honors `DATABASE_URL` without a startup network probe or automatic
+SQLite substitution. A configured PostgreSQL outage must surface as a database
+error, not an apparently empty workspace in a different local database. For an
+intentional local SQLite demo, set `DATABASE_URL=sqlite:///./secureflow.db`
+explicitly. Three isolated configuration tests stub engine creation; they do not
+verify a live PostgreSQL server or apply migrations.
