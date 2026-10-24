@@ -133,10 +133,11 @@ Existing stored rows have not been relabeled or migrated.
 A failed resource check fails the run rather than reporting an unverified clean
 result. A completed run covers only the implemented checks. Pagination,
 region/account-wide coverage and policy-condition interpretation still need
-review; this is not a complete compliance audit. Existing cloud credentials
-remain stored as JSON in the application database without application-level
-encryption. Do not connect sensitive production credentials before hardening
-secret storage. No cloud scans or repairs were performed during this change.
+review; this is not a complete compliance audit. New real AWS credentials are stored in authenticated encrypted envelopes when
+a separate storage key is configured. Legacy plaintext rows are rejected by
+scan dispatch and require a deliberate secure re-registration plan. No existing
+rows have been migrated. Do not connect production credentials before an
+isolated end-to-end review and key-management setup. No cloud scans or repairs were performed during this change.
 
 The broker failure path no longer creates an untracked local thread. An ambiguous
 queue failure leaves a failed scan record; inspect it before retrying. Findings
@@ -187,3 +188,28 @@ Only load locally trusted model/pickle artifacts; this is not an artifact sandbo
 Offline model-load regressions: `python -m unittest discover -s tests -p
  'test_threat_model_safety.py' -v` from backend (numpy required). No model download
 or cloud action is part of those tests.
+
+### Encrypted connector storage (source-only checkpoint)
+
+New real AWS connectors require `CLOUD_CREDENTIALS_KEY`, a base64-encoded random
+32-byte key, shared by API and workers and kept separately from the database.
+There is no default, auto-generated fallback or plaintext write path. AES-256-GCM
+authenticates the account ID, tenant ID and provider alongside the ciphertext,
+so moving an envelope between accounts/tenants/providers fails verification.
+Demo profiles discard all supplied keys and still work without this setting.
+List/register responses never return secrets or ciphertext. Queue messages
+contain only IDs, not decrypted credentials. Decryption happens just before
+validation/worker use. Credentials still exist briefly in service memory and
+are submitted to AWS if a real scan is separately started.
+
+This does NOT migrate old plaintext rows, configure a deployment, rotate keys
+or clear old backups. Legacy rows are intentionally blocked before queueing.
+Existing operators must back up and retain their current keys, plan rotation
+and secure re-registration, and review historical database/backups separately.
+Do not paste keys into tickets/chat, commit them or reuse the JWT signing key.
+Losing/changing the storage key makes existing envelopes unreadable. A KMS or
+managed-secret integration, rotation tooling and live staging verification are
+still future work. No production credential or database was touched here.
+
+Run `python -m unittest discover -s tests -v` from `backend`. Tests use disposable
+keys, synthetic credentials, SQLite and mocked scanners/dispatch only.

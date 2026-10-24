@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from app.database.models import Scan, CloudAccount, Vulnerability, ComplianceCheck, Remediation
 from app.tasks.scan_tasks import run_cloud_scan_task
+from app.security.credential_store import open_credentials
 
 class ScanService:
     """Business logic orchestrator managing scanning runs, fetching findings, and remediations"""
@@ -18,7 +19,7 @@ class ScanService:
         if not account:
             raise ValueError('Cloud account not found or inactive.')
             
-        credentials = account.credentials or {}
+        credentials = open_credentials(account.credentials or {}, account.id, account.organization_id, account.provider)
         if account.provider.lower() != "aws":
             raise ValueError("Only AWS scans are supported. Other providers are not ready.")
         mode = credentials.get("scan_mode", "real")

@@ -41,3 +41,25 @@ class ScanRouteTests(unittest.TestCase):
             result=self.client.post('/scans/cloud-accounts',json={'name':'Rejected','provider':provider,'credentials':credentials})
             self.assertEqual(result.status_code,400,result.text)
         self.assertEqual(self.db.query(CloudAccount).count(),0)
+
+    def test_real_registration_requires_key_before_any_write(self):
+        with patch.dict('os.environ', {'CLOUD_CREDENTIALS_KEY':''}):
+            result=self.client.post('/scans/cloud-accounts',json={'name':'Real','provider':'aws','credentials':{'aws_access_key_id':'synthetic-access','aws_secret_access_key':'synthetic-secret'}})
+        self.assertEqual(result.status_code,503)
+        self.assertNotIn('synthetic-secret',result.text)
+        self.assertEqual(self.db.query(CloudAccount).count(),0)
+
+    def test_real_registration_persists_only_authenticated_envelope(self):
+        import base64, os, json
+        from app.security.credential_store import open_credentials
+        credentials={'aws_access_key_id':'synthetic-access','aws_secret_access_key':'synthetic-secret'}
+        with patch.dict(os.environ,{'CLOUD_CREDENTIALS_KEY':base64.b64encode(os.urandom(32)).decode()}):
+            result=self.client.post('/scans/cloud-accounts',json={'name':'Real','provider':'aws','credentials':credentials})
+            self.assertEqual(result.status_code,200,result.text)
+            row=self.db.query(CloudAccount).one()
+            self.assertEqual(row.credentials['format'],'aesgcm-v1')
+            self.assertNotIn('synthetic-secret',json.dumps(row.credentials))
+            self.assertEqual(open_credentials(row.credentials,row.id,'org','aws')['aws_secret_access_key'],'synthetic-secret')
+            listed=self.client.get('/scans/cloud-accounts')
+            self.assertNotIn('ciphertext',listed.text)
+            self.assertNotIn('credentials',listed.text)

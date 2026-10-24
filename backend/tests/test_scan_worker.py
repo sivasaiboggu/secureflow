@@ -59,3 +59,30 @@ class WorkerTests(unittest.TestCase):
         self.scanners[0].return_value.scan.return_value=[dict(id='x',resource_type='S3',resource_id='x',resource_name='x',vulnerability_type='X',cvss_score=9,title='[DEMO] x',description='x',recommendation='x',remediation_steps=[],terraform_fix='',compliance_frameworks=[],cve_id=None)]
         self.worker.run_cloud_scan_task(Mock(),'one','account','org')
         db=self.session();self.assertEqual(db.query(Alert).one().channels_sent,['WEBPAGE']);db.close()
+
+    def test_worker_decrypts_for_scanner_without_rewriting_envelope(self):
+        import base64, os
+        from app.security.credential_store import seal_credentials
+        with patch.dict(os.environ,{'CLOUD_CREDENTIALS_KEY':base64.b64encode(os.urandom(32)).decode()}):
+            db=self.session();row=db.get(CloudAccount,'account')
+            envelope=seal_credentials({'aws_access_key_id':'synthetic-access','aws_secret_access_key':'synthetic-secret'},row.id,row.organization_id,row.provider)
+            row.credentials=envelope;db.commit();db.close()
+            self.assertTrue(self.worker.run_cloud_scan_task(Mock(),'one','account','org'))
+            supplied=self.scanners[0].call_args.args[2]
+            self.assertEqual(supplied['aws_secret_access_key'],'synthetic-secret')
+            self.assertNotIn('ciphertext',supplied)
+            db=self.session();self.assertEqual(db.get(CloudAccount,'account').credentials,envelope);db.close()
+
+    def test_worker_wrong_key_fails_before_scanner_calls(self):
+        import base64, os
+        from app.security.credential_store import seal_credentials
+        with patch.dict(os.environ,{'CLOUD_CREDENTIALS_KEY':base64.b64encode(os.urandom(32)).decode()}):
+            db=self.session();row=db.get(CloudAccount,'account')
+            row.credentials=seal_credentials({'aws_access_key_id':'synthetic-access','aws_secret_access_key':'synthetic-secret'},row.id,row.organization_id,row.provider)
+            db.commit();db.close()
+        with patch.dict(os.environ,{'CLOUD_CREDENTIALS_KEY':base64.b64encode(os.urandom(32)).decode()}):
+            context=Mock();context.retry.side_effect=RuntimeError('retry requested')
+            with self.assertRaisesRegex(RuntimeError,'retry requested'):
+                self.worker.run_cloud_scan_task(context,'one','account','org')
+        for scanner in self.scanners:scanner.assert_not_called()
+        db=self.session();self.assertEqual(db.get(Scan,'one').status,'FAILED');db.close()

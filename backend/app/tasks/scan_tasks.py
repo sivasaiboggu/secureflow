@@ -14,6 +14,8 @@ from app.scanners.aws.vpc_scanner import VPCScanner
 from app.scanners.aws.cloudtrail_scanner import CloudTrailScanner
 from app.services.ml_service import ml_service
 
+from app.security.credential_store import open_credentials
+
 logger = logging.getLogger(__name__)
 
 @celery_app.task(name="app.tasks.scan_tasks.run_cloud_scan_task", bind=True, max_retries=3)
@@ -37,7 +39,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
         if not cloud_account:
             raise Exception("Target cloud account credentials not found.")
             
-        credentials = cloud_account.credentials
+        credentials = open_credentials(cloud_account.credentials, cloud_account.id, cloud_account.organization_id, cloud_account.provider)
         provider = cloud_account.provider.lower()
         
         findings = []

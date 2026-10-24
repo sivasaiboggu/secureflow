@@ -24,3 +24,5 @@ sentencepiece>=0.2.0
 tiktoken>=0.7.0
 
 email-validator>=2.1.0
+
+cryptography>=42.0.0

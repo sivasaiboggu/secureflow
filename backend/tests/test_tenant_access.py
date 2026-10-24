@@ -87,4 +87,24 @@ class TenantAccessTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.service.apply_remediation(self.db,'vuln-b','user@test.invalid','org-b')
         self.assertEqual(self.db.query(Remediation).count(),0)
 
+    def test_legacy_plaintext_never_dispatches(self):
+        row=self.db.get(CloudAccount,'account-a')
+        row.credentials={'aws_access_key_id':'synthetic-access','aws_secret_access_key':'synthetic-secret'}
+        self.db.commit()
+        with self.assertRaisesRegex(ValueError,'re-registration'):
+            self.service.trigger_scan(self.db,'account-a','org-a')
+        task_module.run_cloud_scan_task.delay.assert_not_called()
+        self.assertEqual(self.db.query(Scan).count(),1)
+
+    def test_encrypted_owned_account_dispatches_only_ids(self):
+        import base64
+        from unittest.mock import patch
+        from app.security.credential_store import seal_credentials
+        row=self.db.get(CloudAccount,'account-a')
+        with patch.dict(os.environ,{'CLOUD_CREDENTIALS_KEY':base64.b64encode(os.urandom(32)).decode()}):
+            row.credentials=seal_credentials({'aws_access_key_id':'synthetic-access','aws_secret_access_key':'synthetic-secret'},row.id,row.organization_id,row.provider)
+            self.db.commit()
+            scan=self.service.trigger_scan(self.db,'account-a','org-a')
+        task_module.run_cloud_scan_task.delay.assert_called_once_with(scan.id,'account-a','org-a')
+
 if __name__=='__main__':unittest.main()

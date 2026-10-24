@@ -9,6 +9,8 @@ from app.database.models import User, CloudAccount, Scan
 from app.schemas.scan import ScanCreate, ScanResponse, CloudAccountCreate, CloudAccountResponse
 from app.services.scan_service import scan_service
 
+from app.security.credential_store import seal_credentials, CredentialStorageError
+
 router = APIRouter()
 
 @router.post("", response_model=ScanResponse)
@@ -47,12 +49,16 @@ def register_cloud_account(payload: CloudAccountCreate, db: Session = Depends(ge
         raise HTTPException(status_code=400, detail="Cloud account name already registered.")
         
     account_id = str(uuid.uuid4())
+    try:
+        stored_credentials = seal_credentials(payload.credentials, account_id, current_user.organization_id, payload.provider)
+    except CredentialStorageError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from None
     account = CloudAccount(
         id=account_id,
         name=payload.name,
         provider=payload.provider.lower(),
         organization_id=current_user.organization_id,
-        credentials={"scan_mode": "demo"} if mode == "demo" else payload.credentials,
+        credentials=stored_credentials,
         is_active=True
     )
     db.add(account)
