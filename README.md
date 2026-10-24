@@ -235,3 +235,15 @@ record for status inspection instead of spawning a fallback or dispatching again
 Synthetic service/route tests cover a lost publish response after completion.
 This does not prove broker acceptance or implement a durable outbox; PENDING
 records after ambiguity still need operator reconciliation before retrying.
+
+
+### Severity output provenance
+
+Scanner severity now uses an explicit CVSS threshold review rule. The service no
+longer supplies fabricated exploitability, impact, age, previous-vulnerability,
+framework or region features to a model, and no longer presents static weights
+as model feature importance. Response evidence names the rule, has no confidence
+estimate, marks calibration false and leaves unavailable explanations empty.
+Two isolated regressions cover thresholds and invalid scores. These are not
+verified exploitability predictions or proof of a security incident. The separate
+model-training code is retained but is not used to override scanner severity.

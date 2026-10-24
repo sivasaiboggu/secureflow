@@ -22,18 +22,19 @@ class MLService:
 
     def predict_severity(self, resource_type: str, vuln_type: str, provider: str, 
                          cvss_score: float, exposure_score: float) -> Dict[str, Any]:
-        """Runs the neural model and generates explainable CVSS estimations with confidence scores"""
-        cat_features = [resource_type, vuln_type, provider, "CIS", "us-east-1"]
-        # Match numerical dimensions: cvss_base_score, exploitability, impact, age, prev_vulns, exposure
-        num_features = [cvss_score, 1.2, 3.4, 30.0, 5.0, exposure_score]
-        
-        severity, confidence = self.severity_model.predict(cat_features, num_features)
-        explanation = self.severity_model.get_explainability(cat_features, num_features)
-        
+        """Explicit CVSS review rule, not inference on fabricated model features."""
+        if not isinstance(cvss_score, (int, float)) or isinstance(cvss_score, bool) or not np.isfinite(cvss_score) or not 0 <= cvss_score <= 10:
+            raise ValueError("A finite CVSS score from 0 to 10 is required.")
+        severity = "CRITICAL" if cvss_score >= 9 else "HIGH" if cvss_score >= 7 else "MEDIUM" if cvss_score >= 4 else "LOW"
+        # The available scanner input has no exploitability/impact/age/history
+        # features. Do not invent those or label static weights as explanations.
         return {
             "predicted_severity": severity,
-            "confidence": confidence,
-            "feature_importance": explanation
+            "confidence": None,
+            "feature_importance": {},
+            "method": "cvss_threshold_review_rule",
+            "calibrated": False,
+            "explanation_available": False
         }
 
     def analyze_api_logs(self, api_metrics: List[float]) -> Dict[str, Any]:
