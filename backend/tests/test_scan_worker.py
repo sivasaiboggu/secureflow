@@ -106,3 +106,34 @@ class WorkerTests(unittest.TestCase):
         db=self.session();row=db.get(Scan,'one');row.status='FAILED';row.completed_at=datetime(2020,1,1);db.commit();db.close()
         self.assertTrue(self.worker.run_cloud_scan_task(Mock(),'one','account','org'))
         db=self.session();row=db.get(Scan,'one');self.assertEqual(row.status,'DEMO_COMPLETED');self.assertGreater(row.completed_at,datetime(2020,1,1));db.close()
+
+
+    def test_provider_exception_details_never_enter_logs_or_retry_payload(self):
+        secret='SYNTHETIC_PRIVATE_KEY_IN_PROVIDER_URL'
+        self.scanners[0].return_value.scan.side_effect=RuntimeError(secret)
+        context=Mock();context.retry.side_effect=RuntimeError('retry requested')
+        with self.assertLogs(self.worker.logger,level='ERROR') as captured:
+            with self.assertRaisesRegex(RuntimeError,'retry requested'):
+                self.worker.run_cloud_scan_task(context,'one','account','org')
+        self.assertNotIn(secret,' '.join(captured.output))
+        self.assertNotIn(secret,str(context.retry.call_args))
+        self.assertIn('Review worker connectivity',str(context.retry.call_args.kwargs['exc']))
+        db=self.session();self.assertEqual(db.get(Scan,'one').status,'FAILED');db.close()
+
+    def test_database_failure_details_never_enter_failure_state_logs(self):
+        self.scanners[0].return_value.scan.side_effect=RuntimeError('PRIVATE_PROVIDER')
+        session=self.session();original=session.query
+        calls=0
+        def query(*args,**kwargs):
+            nonlocal calls
+            calls+=1
+            if calls>=4:raise RuntimeError('PRIVATE_SQL_PARAMETERS')
+            return original(*args,**kwargs)
+        session.query=query
+        self.worker.SessionLocal=lambda:session
+        context=Mock();context.retry.side_effect=RuntimeError('retry requested')
+        with self.assertLogs(self.worker.logger,level='ERROR') as captured:
+            with self.assertRaisesRegex(RuntimeError,'retry requested'):
+                self.worker.run_cloud_scan_task(context,'one','account','org')
+        self.assertNotIn('PRIVATE_PROVIDER',' '.join(captured.output))
+        self.assertNotIn('PRIVATE_SQL_PARAMETERS',' '.join(captured.output))

@@ -50,3 +50,17 @@ Deployments are mapped inside `./infrastructure/kubernetes/`:
    ```bash
    kubectl apply -f infrastructure/kubernetes/deployments/frontend-deployment.yaml
    ```
+
+### Worker error privacy checkpoint
+
+Scan-worker failures now log only the scan identifier and a fixed diagnostic, and
+Celery retry state receives a generic exception rather than a provider or driver
+exception. Provider exceptions and database failures can contain secret-bearing
+URLs or SQL parameters; do not attach those raw objects to logs or retry results.
+Synthetic worker tests cover both error paths. This is not proof that all SDK,
+broker, infrastructure or application logging is scrubbed.
+
+A worker killed while RUNNING can still leave a scan stuck. This checkpoint does
+not add leases, restart recovery or automatic replay. Review that lifecycle before
+rollout, and never replay existing cloud scans without checking their effects and
+the operator's authority. No live cloud scan or deployment was used for these tests.

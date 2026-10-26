@@ -217,8 +217,10 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
         logger.info(f"Post-scan execution successfully finished. Vulnerabilities found: {len(findings)}")
         return True
         
-    except Exception as e:
-        logger.error(f"Scan pipeline execution failed: {str(e)}", exc_info=True)
+    except Exception:
+        # Provider/driver exceptions can contain credentials, SQL parameters and
+        # request URLs. Neither logs nor Celery retry state may receive them.
+        logger.error("Scan pipeline failed | Scan ID: %s", scan_id)
         try:
             db.rollback()
             scan = db.query(Scan).filter(Scan.id == scan_id, Scan.organization_id == organization_id, Scan.cloud_account_id == cloud_account_id).first()
@@ -226,10 +228,10 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
                 scan.status = "FAILED"
                 scan.completed_at = datetime.utcnow()
                 db.commit()
-        except Exception as db_err:
-            logger.critical(f"Failed to write scan error state to DB: {db_err}")
+        except Exception:
+            logger.critical("Scan failure state could not be saved | Scan ID: %s", scan_id)
             
         # Standard Celery retry protocol
-        raise self.retry(exc=e, countdown=10)
+        raise self.retry(exc=RuntimeError("Scan could not be completed. Review worker connectivity and scan permissions."), countdown=10)
     finally:
         db.close()
