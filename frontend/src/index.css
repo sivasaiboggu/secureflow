@@ -181,7 +181,7 @@ html, body, #root {
 
 @media (max-width: 700px) {
   .portfolio-nav { height: auto !important; min-height: 56px; padding: 12px 14px !important; gap: 12px !important; flex-wrap: wrap; }
-  .portfolio-nav-links { order: 3; flex-basis: 100% !important; min-width: 0; overflow-x: auto; padding-right: 28px; -webkit-mask-image: linear-gradient(to right, #000 86%, transparent 100%); mask-image: linear-gradient(to right, #000 86%, transparent 100%); }
+  .portfolio-nav-links { order: 3; flex-basis: 100% !important; min-width: 0; overflow-x: auto; padding-right: 28px; -webkit-mask-image: linear-gradient(to right, #000 70%, transparent 99%); mask-image: linear-gradient(to right, #000 70%, transparent 99%); }
   .portfolio-nav-links a { white-space: nowrap; flex-shrink: 0; }
 }
 @media (max-width: 700px) {
