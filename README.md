@@ -285,3 +285,14 @@ error, not an apparently empty workspace in a different local database. For an
 intentional local SQLite demo, set `DATABASE_URL=sqlite:///./secureflow.db`
 explicitly. Three isolated configuration tests stub engine creation; they do not
 verify a live PostgreSQL server or apply migrations.
+
+### Readiness and API contract checkpoint
+
+The readiness probe now runs its database check with SQLAlchemy 2.0 textual SQL
+and answers 200 only when the database actually responds. A failed probe returns
+a fixed "not ready" body and log line: driver errors, which can carry the
+database user, host or DSN, stay out of both because the probe is
+unauthenticated. The API description no longer advertises "AI-powered"
+management; it describes the prototype as it is. Health/readiness behavior is
+covered by isolated tests with a synthetic broken database; no live database was
+used.

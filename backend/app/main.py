@@ -13,6 +13,7 @@ from app.api.v1.router import api_router
 from app.core.middleware import RequestLoggingMiddleware, MetricsMiddleware
 from app.core.exceptions import CustomException
 from app.utils.logger import setup_logging
+from sqlalchemy import text
 
 # Setup logging
 setup_logging()
@@ -26,15 +27,17 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created successfully.")
-    except Exception as e:
-        logger.error(f"Error creating database tables: {e}", exc_info=True)
+    except Exception:
+        # Driver errors can include the database user, host or DSN. Keep them
+        # out of logs; the readiness probe reports the outage separately.
+        logger.error("Database tables could not be created or verified at startup.")
     yield
     logger.info("Shutting down SecureFlow application...")
 
 # Create FastAPI app
 app = FastAPI(
     title="SecureFlow API",
-    description="AI-Powered Cloud Security Posture Management System",
+    description="Cloud security posture research prototype: AWS listing/check workflows, explicit sample-data demos, and review-only remediation plans.",
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -85,14 +88,16 @@ async def readiness_check():
     try:
         from app.config.database import SessionLocal
         db = SessionLocal()
-        db.execute(Base.metadata.schema or "SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         return {"status": "ready"}
-    except Exception as e:
-        logger.error(f"Readiness check failed: {str(e)}")
+    except Exception:
+        # Driver errors can include the database user, host or DSN. The probe is
+        # unauthenticated, so neither the response nor the log may carry them.
+        logger.error("Readiness check failed: database did not answer a simple query.")
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "not ready", "error": str(e)}
+            content={"status": "not ready"}
         )
 
 # Include API router
