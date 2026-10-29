@@ -60,12 +60,12 @@ def trigger_automated_remediation(
 
 @router.post("/analyze-log")
 def classify_text_log(payload: LogAnalysisRequest):
-    """Applies NLP model to identify suspicious commands or compromised log scripts"""
+    """Heuristic CloudTrail log review. An optional local model requires separate validation; not verified threat detection."""
     result = ml_service.scan_log_for_threats(payload.log_payload)
     return result
 
 @router.post("/analyze-metrics")
 def detect_metric_anomaly(payload: MetricAnalysisRequest):
-    """Applies Neural Autoencoders to identify anomalous metric streams in API counts"""
+    """Reviews eight API metrics with a local autoencoder when reviewed artifacts are loaded; otherwise reports the detector as unavailable."""
     result = ml_service.analyze_api_logs(payload.metrics)
     return result

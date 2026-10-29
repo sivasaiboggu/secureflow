@@ -69,6 +69,9 @@ class RemediationRouteTests(unittest.TestCase):
             source = (Path(__file__).parents[1] / f'app/api/v1/endpoints/{name}').read_text()
             self.assertNotIn('Executes automated remediation', source)
             self.assertNotIn('tasks executed', source)
+        analytics = (Path(__file__).parents[1] / 'app/api/v1/endpoints/vulnerabilities.py').read_text()
+        self.assertNotIn('Applies NLP model', analytics)
+        self.assertNotIn('Applies Neural Autoencoders', analytics)
 
 
 if __name__ == '__main__':
