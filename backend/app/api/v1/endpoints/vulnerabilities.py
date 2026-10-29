@@ -47,14 +47,16 @@ def trigger_automated_remediation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Executes automated remediation scripts (Terraform/Ansible) to repair security issues"""
+    """Saves a Terraform plan for review. Does not execute infrastructure changes."""
     try:
         remediation = scan_service.apply_remediation(db, payload.vulnerability_id, current_user.email, current_user.organization_id)
         return remediation
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Remediation fail: {e}")
+        # Raw driver/database exceptions can carry SQL parameters or secret-bearing
+        # URLs. Clients get a fixed diagnostic; details stay out of the response.
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="The remediation plan could not be saved. Review the finding and try again.") from None
 
 @router.post("/analyze-log")
 def classify_text_log(payload: LogAnalysisRequest):

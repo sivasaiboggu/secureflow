@@ -120,6 +120,10 @@ The review-plan endpoint stores a PENDING Terraform template. It does not run
 Terraform, set an execution timestamp, or close the finding. A missing template
 is rejected. Existing historical APPLIED/REMEDIATED rows are not rewritten by
 this source change; their execution has not been independently verified.
+Unexpected save failures return a fixed diagnostic: raw driver or database
+exceptions (which can carry SQL parameters or secret-bearing URLs) never reach
+the response body, and the route contract no longer describes saved plans as
+executed repairs.
 
 ### Scan truthfulness checkpoint
 
@@ -235,10 +239,10 @@ keys, synthetic credentials, SQLite and mocked scanners/dispatch only.
 Workers atomically claim only PENDING/FAILED scans and clear stale completion
 metadata. Already-completed deliveries do not rescan or create duplicate results;
 a RUNNING scan is not taken over by a second delivery. Three additional isolated
-SQLite tests cover those boundaries. This is not a complete broker exactly-once
-or crash-recovery protocol: a worker crash can leave RUNNING stuck and needs an
-operator-reviewed recovery path. No automatic timeout takeover is implemented,
-and distributed PostgreSQL/Celery concurrency still needs staging validation.
+SQLite tests cover those boundaries. Interrupted RUNNING scans are recovered by
+the sweeper described in "Interrupted scan recovery" below. This is still not a
+complete broker exactly-once protocol, and distributed PostgreSQL/Celery
+concurrency still needs staging validation.
 
 
 ### Ambiguous scan dispatch

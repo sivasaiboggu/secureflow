@@ -18,11 +18,13 @@ def apply_remediation_patch(payload: RemediationApply, db: Session = Depends(get
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Apply failed: {e}")
+        # Raw driver/database exceptions can carry SQL parameters or secret-bearing
+        # URLs. Clients get a fixed diagnostic; details stay out of the response.
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="The remediation plan could not be saved. Review the finding and try again.") from None
 
 @router.get("/history", response_model=List[RemediationResponse])
 def get_remediation_runs(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Lists historical remediation tasks executed in the organization"""
+    """Lists saved remediation review plans for the organization. Plans are not executed repairs."""
     from app.database.models import Scan
     runs = db.query(Remediation).join(Vulnerability).join(Scan).filter(
         Scan.organization_id == current_user.organization_id
