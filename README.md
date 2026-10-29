@@ -321,8 +321,8 @@ narrow screens.
 ### Runtime wiring disclosure
 
 The repository still contains modules that are not wired into the running
-application: `app/remediation/auto_remediate.py`, the email/Teams notifiers and
-the `ml_tasks` retraining jobs. Nothing imports or schedules them; saved plans,
+application: `app/remediation/auto_remediate.py`, the email/Teams notifiers,
+the `ml_tasks` retraining jobs and the legacy `app/ml_engine` tree. Nothing imports or schedules them; saved plans,
 in-app alert records and frozen model artifacts are the real behavior. Treat
 those modules as dormant references, not active capabilities. The analytics
 route contracts now describe heuristic review and optional local models instead

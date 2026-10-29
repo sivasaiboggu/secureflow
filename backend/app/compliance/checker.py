@@ -40,8 +40,7 @@ class ComplianceEngine:
         return compliance_checks
 
     def calculate_scores(self, checks: List[Dict[str, Any]]) -> Dict[str, float]:
-        """Returns compliance percentages per framework category"""
-        scores = {fw: 100.0 for fw in self.frameworks}
+        """Returns compliance percentages only for frameworks with evaluated checks"""
         counts = {fw: {"pass": 0, "fail": 0} for fw in self.frameworks}
         
         for check in checks:
@@ -52,14 +51,12 @@ class ComplianceEngine:
                 else:
                     counts[fw]["fail"] += 1
                     
-        for fw in self.frameworks:
-            total = counts[fw]["pass"] + counts[fw]["fail"]
-            if total > 0:
-                scores[fw] = round((counts[fw]["pass"] / total) * 100.0, 2)
-            else:
-                # Default baseline score for unviolated structures
-                scores[fw] = 100.0
-                
-        return scores
+        # Only frameworks with at least one evaluated check earn a score.
+        # An unchecked framework reports nothing, never a default 100.
+        return {
+            fw: round((counts[fw]["pass"] / (counts[fw]["pass"] + counts[fw]["fail"])) * 100.0, 2)
+            for fw in self.frameworks
+            if counts[fw]["pass"] + counts[fw]["fail"] > 0
+        }
 
 compliance_engine = ComplianceEngine()

@@ -40,7 +40,7 @@ def get_compliance_checks(
 
 @router.get("/summary", response_model=Dict[str, float])
 def get_compliance_summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Yields aggregate posture percentages across categories"""
+    """Yields aggregate posture percentages for frameworks with evaluated checks; empty when nothing has been scanned"""
     from app.compliance.checker import compliance_engine
     from app.database.models import Scan
     
@@ -50,7 +50,8 @@ def get_compliance_summary(db: Session = Depends(get_db), current_user: User = D
     ).order_by(Scan.completed_at.desc()).first()
     
     if not latest_scan:
-        return {"CIS": 100.0, "NIST": 100.0, "PCI_DSS": 100.0, "HIPAA": 100.0, "GDPR": 100.0}
+        # Nothing has been evaluated, so no framework earns a score.
+        return {}
         
     checks = db.query(ComplianceCheck).filter(ComplianceCheck.scan_id == latest_scan.id).all()
     checks_list = [
