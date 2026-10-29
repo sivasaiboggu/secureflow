@@ -45,3 +45,7 @@ class ThreatModelSafetyTests(unittest.TestCase):
         self.assertTrue(self.model.predict_threat('unauthorized request')[0])
         self.assertFalse(self.model.predict_threat('ordinary request')[0])
         self.assertEqual(self.model.method,'heuristic_keywords')
+
+    def test_heuristic_flags_carry_no_fabricated_confidence(self):
+        self.assertIsNone(self.model.predict_threat('unauthorized request')[1])
+        self.assertIsNone(self.model.predict_threat('ordinary request')[1])

@@ -23,6 +23,17 @@ class SeverityServiceTests(unittest.TestCase):
             self.assertIsNone(result['confidence']);self.assertEqual(result['feature_importance'],{})
             self.assertFalse(result['calibrated']);self.assertFalse(result['explanation_available'])
         self.service.severity_model.predict.assert_not_called()
+    def test_scan_log_flag_never_asserts_normal_or_fabricated_confidence(self):
+        self.service.threat_classifier.predict_threat.return_value=(True,0.9)
+        self.service.threat_classifier.method='configured_local_threat_model'
+        result=self.service.scan_log_for_threats('x')
+        self.assertEqual(result['classification'],'FLAGGED');self.assertEqual(result['confidence'],0.9)
+        self.assertFalse(result['calibrated'])
+        self.service.threat_classifier.predict_threat.return_value=(False,None)
+        self.service.threat_classifier.method='heuristic_keywords'
+        result=self.service.scan_log_for_threats('x')
+        self.assertEqual(result['classification'],'UNFLAGGED');self.assertIsNone(result['confidence'])
+        self.assertNotIn('NORMAL',str(result));self.assertFalse(result['calibrated'])
         self.service.severity_model.get_explainability.assert_not_called()
     def test_invalid_cvss_is_not_mapped_to_a_plausible_tier(self):
         for score in [None,True,'9',float('nan'),float('inf'),-1,11]:

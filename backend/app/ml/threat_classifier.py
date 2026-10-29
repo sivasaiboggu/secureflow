@@ -1,7 +1,7 @@
 import os
 import pickle
 import numpy as np
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional, Tuple
 
 # Try loading HuggingFace transformers
 try:
@@ -86,8 +86,8 @@ class ThreatClassifier:
                 self.backup_classifier = None
         return False
 
-    def predict_threat(self, log_line: str) -> Tuple[bool, float]:
-        """Classifies a log entry. Returns (is_threat, confidence_score)"""
+    def predict_threat(self, log_line: str) -> Tuple[bool, Optional[float]]:
+        """Flags a log entry for review. Returns (flag, confidence); heuristic flags carry no numeric confidence."""
         # If transformer is active, run torch classification
         if self.is_transformer_loaded and TRANSFORMERS_AVAILABLE:
             try:
@@ -123,4 +123,4 @@ class ThreatClassifier:
         self.method = "heuristic_keywords"
         suspicious_keywords = ["admin", "root", "unauthorized", "login_failed", "delete_bucket", "put_bucket_policy", "assume_role"]
         has_kw = any(kw in log_line.lower() for kw in suspicious_keywords)
-        return has_kw, 0.72 if has_kw else 0.95
+        return has_kw, None

@@ -201,7 +201,8 @@ downloads that base model. `ENABLE_THREAT_MODEL=true` and `THREAT_MODEL_PATH`
 opt in to an already-local reviewed checkpoint with exactly `{0: "normal",
 1: "threat"}` labels and no missing/mismatched weights. These guards do not prove
 training quality or calibration. Log responses include `method` and
-`calibrated: false`; rule confidence values are heuristic, not measured accuracy.
+`calibrated: false`; heuristic rule flags carry no numeric confidence, and a
+configured local model returns an uncalibrated score, not measured accuracy.
 Only load locally trusted model/pickle artifacts; this is not an artifact sandbox.
 
 Offline model-load regressions: `python -m unittest discover -s tests -p

@@ -58,12 +58,12 @@ class MLService:
         }
 
     def scan_log_for_threats(self, log_payload: str) -> Dict[str, Any]:
-        """Parses CloudTrail or system payloads to classify presence of immediate attacker intent"""
+        """Flags a log for human review. A heuristic or optional local-model flag is not verified threat detection."""
         is_threat, confidence = self.threat_classifier.predict_threat(log_payload)
         return {
             "is_threat": is_threat,
             "confidence": confidence,
-            "classification": "SUSPICIOUS" if is_threat else "NORMAL",
+            "classification": "FLAGGED" if is_threat else "UNFLAGGED",
             "method": self.threat_classifier.method,
             "calibrated": False
         }
