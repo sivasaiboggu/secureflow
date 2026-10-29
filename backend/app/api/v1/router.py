@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, scans, vulnerabilities, compliance, analytics, remediation
+from app.api.v1.endpoints import auth, scans, vulnerabilities, compliance, analytics, remediation, users
 
 api_router = APIRouter()
 
@@ -9,3 +9,4 @@ api_router.include_router(vulnerabilities.router, prefix="/vulnerabilities", tag
 api_router.include_router(compliance.router, prefix="/compliance", tags=["compliance"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(remediation.router, prefix="/remediation", tags=["remediation"])
+api_router.include_router(users.router, prefix="/users", tags=["users"])

@@ -306,3 +306,13 @@ privilege. Registration failures return and log fixed diagnostics without raw
 driver details. Isolated SQLite tests cover role assignment, duplicate handling,
 token shape and failure privacy. No RBAC endpoint currently restricts by role;
 this change removes the latent escalation before one does.
+
+### Organization user directory shows real accounts
+
+The settings directory no longer renders hardcoded sample members. A new
+GET /api/v1/users endpoint returns only users of the caller's organization
+(never password material), and the page loads it with loading, error and empty
+states; invitations remain disabled because that flow does not exist yet.
+Synthetic-API browser checks at 320/390/1280px confirm real rows, no sample
+members and no document overflow; the table scrolls inside its container on
+narrow screens.
