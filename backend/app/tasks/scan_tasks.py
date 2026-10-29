@@ -41,7 +41,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
             Scan.organization_id == organization_id,
             Scan.cloud_account_id == cloud_account_id,
             Scan.status.in_(["PENDING", "FAILED"]),
-        ).update({"status": "RUNNING", "progress": 5.0, "completed_at": None}, synchronize_session=False)
+        ).update({"status": "RUNNING", "progress": 5.0, "completed_at": None, "started_at": datetime.utcnow()}, synchronize_session=False)
         db.commit()
         if claimed != 1:
             # Another worker owns RUNNING, or the status is not executable.
@@ -233,5 +233,18 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
             
         # Standard Celery retry protocol
         raise self.retry(exc=RuntimeError("Scan could not be completed. Review worker connectivity and scan permissions."), countdown=10)
+    finally:
+        db.close()
+
+@celery_app.task(name="app.tasks.scan_tasks.reap_interrupted_scans")
+def reap_interrupted_scans():
+    """Periodic sweeper for scans whose worker died before saving a final state."""
+    from app.services.scan_service import scan_service
+    db = SessionLocal()
+    try:
+        recovered = scan_service.recover_interrupted_scans(db)
+        if recovered:
+            logger.warning("Recovered %d interrupted scan(s) stuck RUNNING | worker stopped reporting", recovered)
+        return recovered
     finally:
         db.close()

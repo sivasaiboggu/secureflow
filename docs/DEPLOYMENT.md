@@ -60,7 +60,17 @@ URLs or SQL parameters; do not attach those raw objects to logs or retry results
 Synthetic worker tests cover both error paths. This is not proof that all SDK,
 broker, infrastructure or application logging is scrubbed.
 
-A worker killed while RUNNING can still leave a scan stuck. This checkpoint does
-not add leases, restart recovery or automatic replay. Review that lifecycle before
-rollout, and never replay existing cloud scans without checking their effects and
-the operator's authority. No live cloud scan or deployment was used for these tests.
+A worker killed outside Python (hard time limit, OOM, host loss) cannot run its
+failure handler, so its scan would stay RUNNING forever and the claim guard would
+refuse every later delivery. Scans now record their last RUNNING claim time, a
+soft limit of 29 minutes lets the task save a failed state before the 30-minute
+hard kill, and a periodic sweeper (`reap_interrupted_scans`, every five minutes
+under Celery Beat) marks RUNNING scans whose claim is older than 35 minutes as
+FAILED so a later delivery can reclaim them. Rows created before start-time
+tracking fall back to their creation time. Run a Beat scheduler alongside the
+workers for the sweeper to act, and add the `started_at` column to existing
+databases before rollout (`ALTER TABLE scans ADD COLUMN started_at TIMESTAMP
+NULL;`) because `create_all` never alters existing tables. Recovery does not
+replay findings or rerun scans by itself; interrupted scans must still be
+re-dispatched deliberately. No live cloud scan or deployment was used for these
+tests.

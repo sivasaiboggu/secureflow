@@ -145,6 +145,21 @@ receive per-run database IDs so a later scan cannot move an earlier scan's
 findings. Alert records now claim only the in-app channel actually implemented,
 not external Slack delivery.
 
+### Interrupted scan recovery
+
+Scan rows record when their current RUNNING ownership began. A soft task limit
+of 29 minutes gives a stalled worker the chance to save a failed state before
+the 30-minute hard kill, and a periodic sweeper marks RUNNING scans whose claim
+is older than 35 minutes as FAILED, which makes them visible and reclaimable by
+a later delivery. A scan a live worker may still own is never touched, and no
+finding rows can exist for an interrupted run because findings commit in the
+same transaction as the final status. Rows claimed before this tracking existed
+fall back to their creation time. Existing databases need the new `started_at`
+column added before rollout; `create_all` does not alter existing tables. The
+sweeper acts only while a Celery Beat scheduler runs alongside the workers.
+Recovery marks interrupted scans failed; it does not replay them, so re-dispatch
+deliberately after checking effects.
+
 Regression checks (synthetic SDK clients and SQLite, no cloud calls):
 
 ```sh

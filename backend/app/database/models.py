@@ -55,6 +55,7 @@ class Scan(Base):
     failed_checks = Column(Integer, default=0)
     passed_checks = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    started_at = Column(DateTime, nullable=True)  # last RUNNING claim time; NULL only on rows predating tracking
     completed_at = Column(DateTime, nullable=True)
     
     organization = relationship("Organization", back_populates="scans")

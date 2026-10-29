@@ -1,5 +1,6 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from app.database.models import Scan, CloudAccount, Vulnerability, ComplianceCheck, Remediation
@@ -62,6 +63,31 @@ class ScanService:
         db.commit()
         
         return scan
+
+    def recover_interrupted_scans(self, db: Session, stale_after: timedelta = timedelta(minutes=35), now: Optional[datetime] = None) -> int:
+        """Mark RUNNING scans whose worker stopped reporting as FAILED.
+
+        A worker killed outside Python (hard time limit, OOM, host loss) never
+        runs its failure handler, so its scan would stay RUNNING forever and the
+        claim guard would refuse every later delivery. A healthy worker finishes
+        or is hard-killed within the configured task time limit, so a RUNNING row
+        whose last claim is older than ``stale_after`` (which must exceed that
+        limit) cannot still be running. Rows claimed before start-time tracking
+        existed have no ``started_at`` and fall back to ``created_at``; dispatch
+        happened immediately after creation, so it approximates the claim time.
+        Recovery marks the scan FAILED with a completion time, making it visible
+        and reclaimable by a later delivery. Scans a live worker may still own
+        are never touched, and no finding rows can exist for an interrupted run
+        because findings commit in the same transaction as the final status.
+        """
+        now = now or datetime.utcnow()
+        cutoff = now - stale_after
+        recovered = db.query(Scan).filter(
+            Scan.status == "RUNNING",
+            func.coalesce(Scan.started_at, Scan.created_at) < cutoff,
+        ).update({"status": "FAILED", "completed_at": now}, synchronize_session=False)
+        db.commit()
+        return recovered
 
     def get_scan(self, db: Session, scan_id: str) -> Optional[Scan]:
         return db.query(Scan).filter(Scan.id == scan_id).first()
