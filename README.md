@@ -110,9 +110,11 @@ cd backend
 python -m unittest discover -s tests -p 'test_tenant_access.py'
 ```
 
-These tests do not execute cloud scans or Terraform. Existing remediation status
-semantics and demo-scan behavior still need separate review; an accepted request
-must not be described as a verified cloud repair.
+These tests do not execute cloud scans or Terraform. Remediation status
+semantics were reviewed: an accepted request is a stored plan, never a verified
+cloud repair. Demo-scan behavior was reviewed: demo scans end as
+`DEMO_COMPLETED` and are excluded from the dashboard score, trend, forecast and
+framework summary, which only read completed real scans with evaluated checks.
 
 ### Remediation plans are not cloud repairs
 

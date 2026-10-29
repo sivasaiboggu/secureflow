@@ -165,6 +165,13 @@ export const Dashboard: React.FC = () => {
           <div style={{ background: 'rgba(14,18,27,0.8)', backdropFilter: 'blur(24px)', border: '0.8px solid rgba(244,240,232,0.1)', borderRadius: 12, padding: '24px' }}>
             <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase' as const, color: 'rgba(158,163,160,0.6)', marginBottom: 6 }}>ANALYSIS</p>
             <h3 style={{ fontFamily: '"Geist", sans-serif', fontSize: 18, fontWeight: 500, letterSpacing: '-0.03em', color: '#F4F0E8', marginBottom: 24 }}>Severity Distribution</h3>
+            {stats.totalVulnerabilities === 0 ? (
+              <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.8px dashed rgba(244,240,232,0.15)', borderRadius: 10 }}>
+                <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'rgba(158,163,160,0.6)', letterSpacing: '0.06em', textAlign: 'center' as const, padding: '0 24px' }}>
+                  No open findings to chart.
+                </p>
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={severityData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 4" stroke="rgba(244,240,232,0.05)" />
@@ -178,6 +185,7 @@ export const Dashboard: React.FC = () => {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </Grid>
 
