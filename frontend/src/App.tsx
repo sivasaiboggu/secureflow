@@ -111,7 +111,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard', path: '/dashboard' },
   { label: 'Scans', path: '/scans' },
   { label: 'Vulnerabilities', path: '/vulnerabilities' },
-  { label: 'AI Intelligence', path: '/analytics' },
+  { label: 'Analytics', path: '/analytics' },
   { label: 'Cloud Accounts', path: '/settings/accounts' },
   { label: 'Users', path: '/settings/users' },
 ];
