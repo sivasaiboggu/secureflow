@@ -1,17 +1,26 @@
-import torch
-import torch.nn as nn
 import numpy as np
 import os
 from typing import List, Tuple, Optional
 
-class RiskLSTM(nn.Module):
+try:
+    import torch
+    import torch.nn as nn
+    TORCH_AVAILABLE = True
+except ImportError:
+    torch = None
+    nn = None
+    TORCH_AVAILABLE = False
+
+class RiskLSTM(nn.Module if TORCH_AVAILABLE else object):
     """LSTM model architecture for time-series forecasting of compliance score drift"""
     def __init__(self, input_dim: int = 1, hidden_dim: int = 32, num_layers: int = 1):
+        if not TORCH_AVAILABLE:
+            raise RuntimeError("RiskLSTM requires torch; forecasting stays unavailable without it.")
         super().__init__()
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_dim, 1)
         
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: "torch.Tensor") -> "torch.Tensor":
         out, _ = self.lstm(x)
         # Predict based on the last time step output
         prediction = self.fc(out[:, -1, :])
@@ -54,6 +63,9 @@ class RiskForecaster:
         torch.save(self.model.state_dict(), self.model_path)
 
     def load(self) -> bool:
+        if not TORCH_AVAILABLE:
+            self.model = None
+            return False
         if not os.path.exists(self.model_path):
             return False
         try:
@@ -65,22 +77,23 @@ class RiskForecaster:
             print(f"Error loading risk forecaster model: {e}")
             return False
 
-    def forecast_next_30_days(self, historical_series: List[float]) -> List[float]:
-        """Runs the LSTM iteratively to predict compliance scores for the upcoming 30 days"""
+    def forecast_next_30_days(self, historical_series: List[float]) -> Optional[List[float]]:
+        """Runs the LSTM iteratively to predict scores for the upcoming 30 days.
+
+        Returns None when no locally trained model exists or when real history
+        is shorter than the model window. No synthetic curve or padded perfect
+        scores are produced in place of a projection.
+        """
+        if len(historical_series) < self.seq_length:
+            return None
         if not self.model:
             if not self.load():
-                # Clean fallback curve if model is not trained yet
-                last_val = historical_series[-1] if historical_series else 80.0
-                return [round(max(40.0, last_val - (i * 0.4) + np.sin(i)*2), 2) for i in range(30)]
-                
+                return None
+
         self.model.eval()
         predictions = []
         current_seq = list(historical_series[-self.seq_length:])
         
-        # Padding if sequence is too short
-        while len(current_seq) < self.seq_length:
-            current_seq.insert(0, 100.0)
-            
         for _ in range(30):
             t_input = torch.tensor([current_seq], dtype=torch.float32).unsqueeze(-1)
             with torch.no_grad():

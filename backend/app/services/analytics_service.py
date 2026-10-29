@@ -34,6 +34,22 @@ class AnalyticsService:
             Vulnerability.status == "OPEN"
         ).group_by(Vulnerability.resource_type).all()
         
+    def get_scan_pass_rates(self, db: Session, org_id: str) -> List[Dict[str, Any]]:
+        """Real per-scan pass rates from completed scans that evaluated at least one check."""
+        scans = db.query(Scan).filter(
+            Scan.organization_id == org_id,
+            Scan.status == "COMPLETED"
+        ).order_by(Scan.completed_at.asc()).all()
+        points = []
+        for s in scans:
+            total = (s.passed_checks or 0) + (s.failed_checks or 0)
+            if total > 0:
+                points.append({
+                    "date": s.completed_at.isoformat() if s.completed_at else None,
+                    "score": round(s.passed_checks / total * 100.0, 2),
+                })
+        return points
+
         return {
             "total_open_vulnerabilities": total_vulns,
             "average_cvss_score": round(float(avg_cvss), 2),

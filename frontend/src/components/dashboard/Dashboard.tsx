@@ -6,7 +6,7 @@ import { api } from '../../services/api';
 interface DashboardStats {
   totalScans: number;
   totalVulnerabilities: number;
-  complianceScore: number;
+  complianceScore: number | null;
   criticalCount: number;
   highCount: number;
   mediumCount: number;
@@ -55,7 +55,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export const Dashboard: React.FC = () => {
-  const [stats, setStats] = useState<DashboardStats>({ totalScans: 0, totalVulnerabilities: 0, complianceScore: 100, criticalCount: 0, highCount: 0, mediumCount: 0, lowCount: 0 });
+  const [stats, setStats] = useState<DashboardStats>({ totalScans: 0, totalVulnerabilities: 0, complianceScore: null, criticalCount: 0, highCount: 0, mediumCount: 0, lowCount: 0 });
   const [loading, setLoading] = useState(true);
   const [severityData, setSeverityData] = useState<any[]>([]);
   const [trendData, setTrendData] = useState<any[]>([]);
@@ -74,7 +74,17 @@ export const Dashboard: React.FC = () => {
       const high = vulns.filter((v: any) => v.severity === 'HIGH').length;
       const medium = vulns.filter((v: any) => v.severity === 'MEDIUM').length;
       const low = vulns.filter((v: any) => v.severity === 'LOW').length;
-      const compliance = Math.max(100 - (critical * 8) - (high * 4) - (medium * 2) - low, 45);
+      // Real evaluated coverage only: weighted pass rate across completed scans
+      // that ran at least one check. Never a penalty formula or a default 100.
+      const evaluated = scans
+        .filter((s: any) => s.status === 'COMPLETED' && ((s.passed_checks || 0) + (s.failed_checks || 0)) > 0)
+        .sort((a: any, b: any) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime());
+      let compliance: number | null = null;
+      if (evaluated.length > 0) {
+        const passed = evaluated.reduce((n: number, s: any) => n + (s.passed_checks || 0), 0);
+        const total = evaluated.reduce((n: number, s: any) => n + (s.passed_checks || 0) + (s.failed_checks || 0), 0);
+        compliance = Math.round((passed / total) * 100);
+      }
 
       setStats({ totalScans: scans.length, totalVulnerabilities: vulns.length, complianceScore: compliance, criticalCount: critical, highCount: high, mediumCount: medium, lowCount: low });
       setSeverityData([
@@ -83,11 +93,10 @@ export const Dashboard: React.FC = () => {
         { name: 'Medium', count: medium, fill: '#fbbf24' },
         { name: 'Low', count: low, fill: '#4ade80' },
       ]);
-      setTrendData([
-        { date: 'T-4', score: 100 }, { date: 'T-3', score: 94 },
-        { date: 'T-2', score: 88 }, { date: 'T-1', score: Math.min(compliance + 5, 100) },
-        { date: 'Now', score: compliance },
-      ]);
+      setTrendData(evaluated.map((s: any) => ({
+        date: s.completed_at ? new Date(s.completed_at).toLocaleDateString() : 'scan',
+        score: Math.round((s.passed_checks / (s.passed_checks + s.failed_checks)) * 100),
+      })));
       setLastUpdated(new Date().toLocaleTimeString());
     } catch (err) {
       console.error('Dashboard fetch error:', err);
@@ -102,7 +111,7 @@ export const Dashboard: React.FC = () => {
     </Box>
   );
 
-  const complianceColor = stats.complianceScore >= 80 ? '#4ade80' : stats.complianceScore >= 60 ? '#fbbf24' : '#f87171';
+  const complianceColor = stats.complianceScore === null ? 'rgba(158,163,160,0.7)' : stats.complianceScore >= 80 ? '#4ade80' : stats.complianceScore >= 60 ? '#fbbf24' : '#f87171';
 
   return (
     <div style={{ padding: '32px', maxWidth: 1400, margin: '0 auto' }}>
@@ -142,7 +151,7 @@ export const Dashboard: React.FC = () => {
           <StatCard index={1} label="Vulnerabilities" value={stats.totalVulnerabilities} sub="Active findings" accent="#fb923c" />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard index={2} label="Compliance Score" value={`${stats.complianceScore}%`} sub="CIS benchmark" accent={complianceColor} />
+          <StatCard index={2} label="Compliance Score" value={stats.complianceScore === null ? '\u2014' : `${stats.complianceScore}%`} sub={stats.complianceScore === null ? 'No evaluated checks yet' : 'Pass rate across completed scans'} accent={complianceColor} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard index={3} label="Critical Threats" value={stats.criticalCount} sub="Immediate action" accent="#f87171" />
@@ -177,6 +186,13 @@ export const Dashboard: React.FC = () => {
           <div style={{ background: 'rgba(14,18,27,0.8)', backdropFilter: 'blur(24px)', border: '0.8px solid rgba(244,240,232,0.1)', borderRadius: 12, padding: '24px' }}>
             <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase' as const, color: 'rgba(158,163,160,0.6)', marginBottom: 6 }}>TREND</p>
             <h3 style={{ fontFamily: '"Geist", sans-serif', fontSize: 18, fontWeight: 500, letterSpacing: '-0.03em', color: '#F4F0E8', marginBottom: 24 }}>Compliance Over Time</h3>
+            {trendData.length < 2 ? (
+              <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.8px dashed rgba(244,240,232,0.15)', borderRadius: 10 }}>
+                <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'rgba(158,163,160,0.6)', letterSpacing: '0.06em', textAlign: 'center' as const, padding: '0 24px' }}>
+                  Appears after at least two completed scans with evaluated checks.
+                </p>
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={trendData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                 <defs>
@@ -192,6 +208,7 @@ export const Dashboard: React.FC = () => {
                 <Area type="monotone" dataKey="score" stroke="#E7FF72" strokeWidth={2} fill="url(#complianceGrad)" dot={{ fill: '#E7FF72', r: 4, strokeWidth: 0 }} />
               </AreaChart>
             </ResponsiveContainer>
+            )}
           </div>
         </Grid>
       </Grid>

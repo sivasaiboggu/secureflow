@@ -14,24 +14,18 @@ def get_dashboard_analytics(db: Session = Depends(get_db), current_user: User = 
     """Compiles total open vulnerability findings and counts sorted by categories"""
     return analytics_service.get_summary_stats(db, current_user.organization_id)
 
-@router.get("/forecast", response_model=List[float])
+@router.get("/forecast", response_model=Dict[str, Any])
 def get_compliance_score_forecast(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Invokes PyTorch LSTM to project security score drift over the next 30 days"""
-    from app.database.models import Scan
-    
-    # Query past scores sequence
-    scans = db.query(Scan).filter(
-        Scan.organization_id == current_user.organization_id,
-        Scan.status == "COMPLETED"
-    ).order_by(Scan.completed_at.asc()).all()
-    
-    historical = []
-    for s in scans:
-        total = s.passed_checks + s.failed_checks
-        score = (s.passed_checks / total * 100.0) if total > 0 else 100.0
-        historical.append(score)
-        
-    if not historical:
-        historical = [100.0, 95.0, 92.0, 85.0]
-        
-    return risk_forecaster.forecast_next_30_days(historical)
+    """Projects posture drift from real completed-scan pass rates; an unavailable projection names its reason instead of inventing history."""
+    points = analytics_service.get_scan_pass_rates(db, current_user.organization_id)
+    historical = [p["score"] for p in points]
+    scores = risk_forecaster.forecast_next_30_days(historical)
+    if scores is None:
+        return {
+            "available": False,
+            "scores": [],
+            "method": "unavailable",
+            "calibrated": False,
+            "detail": "A locally trained LSTM and at least seven completed scans with evaluated checks are required. No projection was invented.",
+        }
+    return {"available": True, "scores": scores, "method": "local_lstm_uncalibrated", "calibrated": False}
