@@ -35,12 +35,15 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)):
         
         # Create user
         user_id = str(uuid.uuid4())
+        # The registrant founds a new organization, so the server assigns the
+        # founder role. A client-supplied role is never trusted: stored roles
+        # feed RBAC checks, and accepting them would be self-assigned privilege.
         new_user = User(
             id=user_id,
             email=payload.email,
             hashed_password=get_password_hash(payload.password),
             full_name=payload.full_name,
-            role=payload.role or "user",
+            role="admin",
             organization_id=org_id,
             is_active=True
         )
@@ -60,13 +63,14 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)):
             refresh_token=refresh_token,
             user=UserResponse.model_validate(new_user)
         )
-    except Exception as e:
+    except Exception:
         db.rollback()
-        logger.error(f"Error during registration flow: {e}", exc_info=True)
+        # Driver errors can carry SQL parameters, DSNs or account details.
+        logger.error("Registration could not be completed; rolled back.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Registration failed. Check server logs."
-        )
+        ) from None
 
 @router.post("/login", response_model=Token)
 def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):

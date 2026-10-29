@@ -296,3 +296,13 @@ unauthenticated. The API description no longer advertises "AI-powered"
 management; it describes the prototype as it is. Health/readiness behavior is
 covered by isolated tests with a synthetic broken database; no live database was
 used.
+
+### Registration role assignment
+
+The server now assigns the founder role when a registration creates a new
+organization; a client-supplied role is ignored. Stored roles feed RBAC checks,
+so accepting them from the request would let any registrant self-assign
+privilege. Registration failures return and log fixed diagnostics without raw
+driver details. Isolated SQLite tests cover role assignment, duplicate handling,
+token shape and failure privacy. No RBAC endpoint currently restricts by role;
+this change removes the latent escalation before one does.
