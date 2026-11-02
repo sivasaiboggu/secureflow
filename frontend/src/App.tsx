@@ -3,6 +3,7 @@ import { BrowserRouter, Link, useNavigate, useLocation } from 'react-router-dom'
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { AppRoutes } from './routes';
 import { WebGLBackground } from './components/common/WebGLBackground';
+import { ApiUnavailableBanner } from './components/common/ApiUnavailableBanner';
 import './index.css';
 
 // MUI theme with Nexus tokens
@@ -236,6 +237,7 @@ function App() {
       <BrowserRouter>
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative', zIndex: 1 }}>
           <NavigationHeader />
+          <ApiUnavailableBanner />
           <main style={{ flex: 1 }}>
             <AppRoutes />
           </main>
