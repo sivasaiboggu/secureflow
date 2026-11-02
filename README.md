@@ -68,8 +68,11 @@ To configure, compile, train the AI models, and run the database and dashboard l
 3. **Verify services**:
    - Access **SecureFlow Web App**: [http://localhost:3000](http://localhost:3000)
    - Access **FastAPI API Swagger Docs**: [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
-   - Default login email: `admin@secureflow.io`
-   - Default login password: `password123`
+   - To seed a local demo database, choose a password and run:
+     `SEED_ADMIN_PASSWORD=<your chosen password> python scripts/seed_database.py`
+   - Then sign in with `admin@secureflow.io` and the password you chose.
+   - The seed never deletes existing data unless you pass `--reset` together with
+     `SEED_RESET_CONFIRM=DELETE_ALL_DATA`.
 
 ---
 

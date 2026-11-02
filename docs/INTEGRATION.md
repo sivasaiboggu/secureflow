@@ -73,7 +73,5 @@ SMTP_FROM=alerts@secureflow.io
 
 1. Open **Microsoft Edge**.
 2. Navigate to the local client address: `http://localhost:5173`.
-3. Sign in using the admin account:
-   * **Email**: `admin@secureflow.io`
-   * **Password**: `password123`
+3. Seed a local admin account first (`SEED_ADMIN_PASSWORD=<your chosen password> python scripts/seed_database.py`), then sign in with `admin@secureflow.io` and the password you chose.
 4. Click **Start Scan** on the Scans page to trigger the background scanning thread. Verify that compliance score graphs dynamically update.

@@ -1,3 +1,15 @@
+"""Seed a local/demo database with baseline demo data.
+
+Safety rules:
+- No password is hardcoded anywhere: the operator must supply
+  SEED_ADMIN_PASSWORD (at least 12 characters, not a known-trivial value)
+  or the script refuses to run.
+- Existing data is never deleted silently: destructive reset requires BOTH
+  the --reset flag and SEED_RESET_CONFIRM=DELETE_ALL_DATA in the
+  environment. Without both, the script aborts if the database already
+  holds rows.
+"""
+import argparse
 import sys
 import os
 import uuid
@@ -10,21 +22,90 @@ from app.config.database import SessionLocal, Base, engine
 from app.database.models import User, Organization, CloudAccount, Scan, Vulnerability, ComplianceCheck
 from app.core.security import get_password_hash
 
-def seed_db():
+MIN_PASSWORD_LENGTH = 12
+# Values that must never become a live credential. Includes every password
+# this repository previously published.
+TRIVIAL_PASSWORDS = {"password123", "password", "admin123", "securepassword123", "changeme"}
+RESET_CONFIRM_VALUE = "DELETE_ALL_DATA"
+
+
+class SeedConfigError(Exception):
+    """Raised when the operator has not supplied safe seeding configuration."""
+
+
+def resolve_admin_password(env):
+    """Return the operator-supplied admin password or refuse loudly."""
+    password = env.get("SEED_ADMIN_PASSWORD", "")
+    if not password:
+        raise SeedConfigError(
+            "SEED_ADMIN_PASSWORD is not set. Choose a password and run with "
+            "SEED_ADMIN_PASSWORD=<your chosen password>; the seed script no "
+            "longer ships a default."
+        )
+    if password in TRIVIAL_PASSWORDS:
+        raise SeedConfigError(
+            "SEED_ADMIN_PASSWORD is a known-trivial value and is refused."
+        )
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise SeedConfigError(
+            f"SEED_ADMIN_PASSWORD must be at least {MIN_PASSWORD_LENGTH} characters."
+        )
+    return password
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Seed the SecureFlow demo database.")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Delete existing rows before seeding. Also requires "
+             "SEED_RESET_CONFIRM=DELETE_ALL_DATA in the environment.",
+    )
+    return parser.parse_args(argv)
+
+
+def confirm_reset(args, env):
+    """True only when the operator explicitly confirmed destructive reset."""
+    if not args.reset:
+        return False
+    if env.get("SEED_RESET_CONFIRM") != RESET_CONFIRM_VALUE:
+        raise SeedConfigError(
+            "--reset deletes every existing row. To confirm, also set "
+            "SEED_RESET_CONFIRM=DELETE_ALL_DATA in the environment."
+        )
+    return True
+
+
+def seed_db(argv=None, env=None):
+    args = parse_args(argv)
+    env = os.environ if env is None else env
+    admin_password = resolve_admin_password(env)
+    reset = confirm_reset(args, env)
+
     print("Initializing database tables...")
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
-    
+
     try:
-        # 1. Clear existing seed records
-        db.query(Vulnerability).delete()
-        db.query(ComplianceCheck).delete()
-        db.query(Scan).delete()
-        db.query(CloudAccount).delete()
-        db.query(User).delete()
-        db.query(Organization).delete()
-        db.commit()
-        print("Cleared stale records.")
+        existing_rows = sum(
+            db.query(model).count()
+            for model in (User, Organization, CloudAccount, Scan, Vulnerability, ComplianceCheck)
+        )
+        if existing_rows and not reset:
+            raise SeedConfigError(
+                f"Database already holds {existing_rows} rows; nothing was changed. "
+                "Re-run with --reset and SEED_RESET_CONFIRM=DELETE_ALL_DATA to replace them, "
+                "or use a fresh database."
+            )
+        if reset:
+            print("Reset confirmed: deleting existing rows before seeding.")
+            db.query(Vulnerability).delete()
+            db.query(ComplianceCheck).delete()
+            db.query(Scan).delete()
+            db.query(CloudAccount).delete()
+            db.query(User).delete()
+            db.query(Organization).delete()
+            db.commit()
 
         # 2. Add Organization
         org_id = str(uuid.uuid4())
@@ -37,7 +118,7 @@ def seed_db():
         admin = User(
             id=user_id,
             email="admin@secureflow.io",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash(admin_password),
             full_name="Post Posture Auditor",
             role="admin",
             organization_id=org_id,
@@ -239,9 +320,13 @@ def seed_db():
         db.commit()
         print("Database seeded with baseline items successfully.")
         
+    except SeedConfigError:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         print(f"Error seeding database: {e}")
+        raise SystemExit(1)
     finally:
         db.close()
 

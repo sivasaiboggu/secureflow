@@ -19,7 +19,7 @@ Authorization: Bearer <your-jwt-token-string>
 ```json
 {
   "email": "admin@secureflow.io",
-  "password": "securepassword123",
+  "password": "<your-password>",
   "full_name": "Security Auditor",
   "organization_name": "Palo Alto Sandbox"
 }
@@ -31,7 +31,7 @@ Authorization: Bearer <your-jwt-token-string>
 * **Content-Type**: `application/x-www-form-urlencoded`
 * **Request Payload**:
 ```
-username=admin@secureflow.io&password=securepassword123
+username=admin@secureflow.io&password=<your-password>
 ```
 * **Response (200 OK)**: Returns the user context alongside access and refresh tokens.
 
