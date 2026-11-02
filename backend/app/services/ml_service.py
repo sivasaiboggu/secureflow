@@ -15,10 +15,16 @@ class MLService:
         self.anomaly_detector = AnomalyDetector(model_dir="./models/anomaly")
         self.threat_classifier = ThreatClassifier(model_dir="./models/threat")
         
-        # Proactively load models
-        self.severity_model.load()
-        self.anomaly_detector.load()
-        self.threat_classifier.load()
+        # Proactively load models; a missing optional runtime (for example
+        # torch on a small free host) leaves that capability honestly
+        # unavailable instead of breaking startup.
+        for name, loader in (("severity", self.severity_model.load),
+                             ("anomaly", self.anomaly_detector.load),
+                             ("threat", self.threat_classifier.load)):
+            try:
+                loader()
+            except Exception as exc:
+                logger.warning("%s model unavailable at startup: %s", name, exc)
 
     def predict_severity(self, resource_type: str, vuln_type: str, provider: str, 
                          cvss_score: float, exposure_score: float) -> Dict[str, Any]:

@@ -1,15 +1,24 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
+try:
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+    TORCH_AVAILABLE = True
+except ImportError:
+    torch = None
+    nn = None
+    optim = None
+    TORCH_AVAILABLE = False
 import numpy as np
 import pickle
 import os
 import json
 from typing import Dict, List, Any, Tuple
 
-class SeverityAttention(nn.Module):
+class SeverityAttention(nn.Module if TORCH_AVAILABLE else object):
     """Attention block to weight importance of categorical and numerical features"""
     def __init__(self, embedding_dim: int):
+        if not TORCH_AVAILABLE:
+            raise RuntimeError("SeverityAttention requires torch; severity inference stays unavailable without it.")
         super().__init__()
         self.attn = nn.Sequential(
             nn.Linear(embedding_dim, embedding_dim),
@@ -17,16 +26,18 @@ class SeverityAttention(nn.Module):
             nn.Linear(embedding_dim, 1),
             nn.Softmax(dim=1)
         )
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: "torch.Tensor") -> "torch.Tensor":
         weights = self.attn(x)
         return x * weights
 
-class SeverityClassifier(nn.Module):
+class SeverityClassifier(nn.Module if TORCH_AVAILABLE else object):
     """
     Deep Neural Network with Residual Connections and Self-Attention.
     Reference: neuroai.com advanced production architectures
     """
     def __init__(self, cat_dims: List[int], num_features_count: int, emb_dim: int = 16, num_classes: int = 4):
+        if not TORCH_AVAILABLE:
+            raise RuntimeError("SeverityClassifier requires torch; severity inference stays unavailable without it.")
         super().__init__()
         # Embedding layers for each categorical feature
         self.embeddings = nn.ModuleList([
@@ -54,7 +65,7 @@ class SeverityClassifier(nn.Module):
         # Class outputs layer: LOW, MEDIUM, HIGH, CRITICAL
         self.out_layer = nn.Linear(64, num_classes)
         
-    def forward(self, cat_x: torch.Tensor, num_x: torch.Tensor) -> torch.Tensor:
+    def forward(self, cat_x: "torch.Tensor", num_x: "torch.Tensor") -> "torch.Tensor":
         embedded = []
         if len(self.cat_dims) > 0 and cat_x.shape[1] > 0:
             for i, emb_layer in enumerate(self.embeddings):
@@ -115,6 +126,8 @@ class SeverityPredictionModel:
             return False
 
     def save(self):
+        if not TORCH_AVAILABLE or self.model is None:
+            raise RuntimeError("Cannot save a severity model without torch.")
         os.makedirs(self.model_dir, exist_ok=True)
         torch.save(self.model.state_dict(), self.model_path)
         with open(self.meta_path, 'wb') as f:
@@ -122,6 +135,8 @@ class SeverityPredictionModel:
 
     def fit(self, X_cat: np.ndarray, X_num: np.ndarray, y: np.ndarray, 
             cat_encoders: Dict[str, Dict[str, int]], epochs: int = 15, batch_size: int = 64):
+        if not TORCH_AVAILABLE:
+            raise RuntimeError("Training the severity model requires torch.")
         
         cat_dims = [len(cat_encoders[col]) for col in sorted(cat_encoders.keys())]
         num_features_count = X_num.shape[1]
@@ -167,12 +182,7 @@ class SeverityPredictionModel:
         """Perform real-time model inference returning (severity_class, confidence)"""
         if not self.model:
             if not self.load():
-                # Fallback scoring if model is not trained yet
-                score = num_features[0] if num_features else 5.0
-                if score >= 9.0: return "CRITICAL", 0.95
-                if score >= 7.0: return "HIGH", 0.88
-                if score >= 4.0: return "MEDIUM", 0.82
-                return "LOW", 0.90
+                raise RuntimeError("No trained severity model is available. No severity inference was performed.")
                 
         self.model.eval()
         

@@ -1,14 +1,22 @@
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+    TORCH_AVAILABLE = True
+except ImportError:
+    torch = None
+    nn = None
+    TORCH_AVAILABLE = False
 import numpy as np
 from sklearn.ensemble import IsolationForest
 import pickle
 import os
 from typing import Dict, Any, Tuple, Optional
 
-class Autoencoder(nn.Module):
+class Autoencoder(nn.Module if TORCH_AVAILABLE else object):
     """Deep autoencoder to calculate reconstruction error for anomaly detection"""
     def __init__(self, input_dim: int):
+        if not TORCH_AVAILABLE:
+            raise RuntimeError("Autoencoder requires torch; anomaly autoencoder stays unavailable without it.")
         super().__init__()
         self.encoder = nn.Sequential(
             nn.Linear(input_dim, 32),
@@ -25,7 +33,7 @@ class Autoencoder(nn.Module):
             nn.Linear(32, input_dim)
         )
         
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: "torch.Tensor") -> "torch.Tensor":
         latent = self.encoder(x)
         reconstructed = self.decoder(latent)
         return reconstructed
@@ -42,6 +50,8 @@ class AnomalyDetector:
         self.threshold = 0.05  # Reconstruct loss cutoff
         
     def fit(self, data: np.ndarray, epochs: int = 10, batch_size: int = 32):
+        if not TORCH_AVAILABLE:
+            raise RuntimeError("Training the anomaly autoencoder requires torch.")
         os.makedirs(self.model_dir, exist_ok=True)
         input_dim = data.shape[1]
         
@@ -109,8 +119,7 @@ class AnomalyDetector:
         """
         if not self.autoencoder or not self.isolation_forest:
             if not self.load():
-                # Default heuristics fallback
-                return False, 0.02
+                raise RuntimeError("No anomaly detection model is available. No assessment was performed.")
                 
         # 1. Compute Isolation Forest score
         if_score = float(self.isolation_forest.decision_function(sample)[0])
