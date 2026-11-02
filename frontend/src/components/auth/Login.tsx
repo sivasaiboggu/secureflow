@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 
 export const Login: React.FC = () => {
-  const [email, setEmail] = useState('admin@secureflow.io');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -62,22 +62,9 @@ export const Login: React.FC = () => {
             OUR LASER-FOCUSED POSTURE ENGINE.
           </p>
 
-          {/* Stats row */}
-          <div style={styles.statsRow}>
-            {[
-              { value: '99.9%', label: 'Uptime SLA' },
-              { value: '<2ms', label: 'Scan Latency' },
-              { value: '500+', label: 'CIS Controls' },
-            ].map((s) => (
-              <div key={s.label} style={styles.statItem}>
-                <span style={styles.statValue}>{s.value}</span>
-                <span style={styles.statLabel}>{s.label}</span>
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* Bottom nav-like tabs */}
+          {/* Bottom nav-like tabs */}
         <div style={styles.tabRow}>
           {['Platform', 'Architecture', 'Metrics', 'Logs'].map((t, i) => (
             <div key={t} style={{ ...styles.tab, ...(i === 0 ? styles.tabActive : {}) }}>{t}</div>
@@ -126,7 +113,7 @@ export const Login: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   style={styles.input}
-                  placeholder="admin@secureflow.io"
+                  placeholder="you@company.com"
                   onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(231,255,114,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(231,255,114,0.08)'; }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(244,240,232,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
@@ -175,10 +162,7 @@ export const Login: React.FC = () => {
               </button>
             </form>
 
-            <div style={styles.hint}>
-              <span style={styles.hintMono}>DEFAULT CREDENTIALS</span>
-              <code style={styles.hintCode}>admin@secureflow.io / password123</code>
-            </div>
+            
           </div>
         </div>
       </div>
