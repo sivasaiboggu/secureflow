@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -18,8 +18,8 @@ router = APIRouter()
 def get_vulnerabilities(
     severity: Optional[str] = None,
     status: Optional[str] = None,
-    skip: int = 0,
-    limit: int = 50,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

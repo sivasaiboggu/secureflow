@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List
 import uuid
@@ -30,7 +30,7 @@ def trigger_new_scan(payload: ScanCreate, db: Session = Depends(get_db), current
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not start the scan. Check its status before trying again.")
 
 @router.get("", response_model=List[ScanResponse])
-def get_scans_history(skip: int = 0, limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_scans_history(skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Lists recent scans executed within the tenant organization"""
     scans = scan_service.list_scans(db, current_user.organization_id, skip, limit)
     return scans
