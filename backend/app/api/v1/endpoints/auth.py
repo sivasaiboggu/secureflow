@@ -11,13 +11,21 @@ from app.core.security import verify_password, get_password_hash, create_access_
 from app.schemas.user import UserCreate, UserResponse, Token
 
 logger = logging.getLogger(__name__)
+
+def _normalize_email(email: str) -> str:
+    """Email addresses are stored and matched lowercase without surrounding
+    whitespace, so case or spacing differences never create duplicate
+    accounts or failed logins."""
+    return email.strip().lower()
+
 router = APIRouter()
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register_user(payload: UserCreate, db: Session = Depends(get_db)):
     """Registers organization schema, user account, and returns credentials tokens"""
     # Check if user already exists
-    existing_user = db.query(User).filter(User.email == payload.email).first()
+    email = _normalize_email(payload.email)
+    existing_user = db.query(User).filter(User.email == email).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -40,7 +48,7 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)):
         # feed RBAC checks, and accepting them would be self-assigned privilege.
         new_user = User(
             id=user_id,
-            email=payload.email,
+            email=email,
             hashed_password=get_password_hash(payload.password),
             full_name=payload.full_name,
             role="admin",
@@ -75,7 +83,8 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)):
 @router.post("/login", response_model=Token)
 def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Validates login credentials and yields active authentication sessions"""
-    user = db.query(User).filter(User.email == form_data.username).first()
+    email = _normalize_email(form_data.username)
+    user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

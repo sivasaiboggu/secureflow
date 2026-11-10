@@ -79,6 +79,31 @@ class AuthRouteTests(unittest.TestCase):
         self.db.rollback()
         self.assertEqual(self.db.query(User).count(), 0)
 
+    def test_registration_stores_normalized_lowercase_email(self):
+        result = self.client.post('/auth/register', json=self.payload(email='  FOUNDER@Example.COM '))
+        self.assertEqual(result.status_code, 201, result.text)
+        user = self.db.query(User).one()
+        self.assertEqual(user.email, 'founder@example.com')
+        self.assertEqual(result.json()['user']['email'], 'founder@example.com')
+
+    def test_duplicate_email_rejected_regardless_of_case_or_spacing(self):
+        self.assertEqual(self.client.post('/auth/register', json=self.payload()).status_code, 201)
+        result = self.client.post('/auth/register', json=self.payload(email='Founder@example.com  '))
+        self.assertEqual(result.status_code, 400, result.text)
+        self.assertEqual(self.db.query(Organization).count(), 1)
+        self.assertEqual(self.db.query(User).count(), 1)
+
+    def test_login_succeeds_with_case_and_whitespace_differences(self):
+        self.assertEqual(self.client.post('/auth/register', json=self.payload()).status_code, 201)
+        result = self.client.post('/auth/login', data={'username': ' Founder@EXAMPLE.com', 'password': 'synthetic-pass-123'})
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertTrue(result.json()['access_token'])
+
+    def test_login_still_rejects_wrong_password_after_normalization(self):
+        self.assertEqual(self.client.post('/auth/register', json=self.payload()).status_code, 201)
+        result = self.client.post('/auth/login', data={'username': 'FOUNDER@example.com', 'password': 'wrong-pass'})
+        self.assertEqual(result.status_code, 400, result.text)
+
 
 if __name__ == '__main__':
     unittest.main()
