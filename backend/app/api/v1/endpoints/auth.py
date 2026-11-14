@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 import uuid
 import logging
@@ -23,9 +24,12 @@ router = APIRouter()
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register_user(payload: UserCreate, db: Session = Depends(get_db)):
     """Registers organization schema, user account, and returns credentials tokens"""
-    # Check if user already exists
+    # Check if user already exists. Rows written before input normalization
+    # (or by any future writer) may store mixed case, and email identity is
+    # case-insensitive, so the duplicate check must be too. Exact-match here
+    # would let a normalized duplicate of a legacy row through.
     email = _normalize_email(payload.email)
-    existing_user = db.query(User).filter(User.email == email).first()
+    existing_user = db.query(User).filter(func.lower(User.email) == email).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -84,7 +88,9 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)):
 def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Validates login credentials and yields active authentication sessions"""
     email = _normalize_email(form_data.username)
-    user = db.query(User).filter(User.email == email).first()
+    # Case-insensitive read: a mixed-case row stored before normalization must
+    # still be able to sign in instead of being locked out by its own casing.
+    user = db.query(User).filter(func.lower(User.email) == email).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

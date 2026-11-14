@@ -104,6 +104,30 @@ class AuthRouteTests(unittest.TestCase):
         result = self.client.post('/auth/login', data={'username': 'FOUNDER@example.com', 'password': 'wrong-pass'})
         self.assertEqual(result.status_code, 400, result.text)
 
+    def legacy_mixed_case_user(self):
+        # A row written before input normalization, storing uppercase letters.
+        from app.core.security import get_password_hash
+        org = Organization(id='legacy-org', name='Legacy Org')
+        user = User(id='legacy-user', email='LegacyUser@Example.com',
+                    hashed_password=get_password_hash('synthetic-pass-123'),
+                    full_name='Legacy User', role='admin', is_active=True,
+                    organization_id='legacy-org')
+        self.db.add(org); self.db.add(user); self.db.commit()
+
+    def test_login_matches_mixed_case_email_stored_before_normalization(self):
+        self.legacy_mixed_case_user()
+        result = self.client.post('/auth/login', data={'username': 'legacyuser@example.com', 'password': 'synthetic-pass-123'})
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertTrue(result.json()['access_token'])
+
+    def test_register_rejects_duplicate_of_mixed_case_stored_email(self):
+        self.legacy_mixed_case_user()
+        result = self.client.post('/auth/register', json=self.payload(email='LEGACYUSER@example.com'))
+        self.assertEqual(result.status_code, 400, result.text)
+        # No normalized duplicate account or organization may slip through.
+        self.assertEqual(self.db.query(User).count(), 1)
+        self.assertEqual(self.db.query(Organization).count(), 1)
+
 
 if __name__ == '__main__':
     unittest.main()
