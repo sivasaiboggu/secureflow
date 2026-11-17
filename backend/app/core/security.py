@@ -18,7 +18,9 @@ def create_access_token(subject: str | Any, expires_delta: Optional[timedelta] =
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         
-    to_encode = {"exp": expire, "sub": str(subject)}
+    # Access tokens carry an explicit type so refresh tokens, which are
+    # long-lived, can never authenticate API requests directly.
+    to_encode = {"exp": expire, "sub": str(subject), "type": "access"}
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 

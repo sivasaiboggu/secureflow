@@ -15,7 +15,10 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
-        if user_id is None:
+        # Only short-lived access tokens authenticate API calls. Refresh
+        # tokens are for minting new tokens and tokens without a type claim
+        # predate the distinction, so both are rejected here.
+        if user_id is None or payload.get("type") != "access":
             raise CredentialsException()
     except JWTError:
         raise CredentialsException()
