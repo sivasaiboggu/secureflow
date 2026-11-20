@@ -33,7 +33,14 @@ class AnalyticsService:
             Scan.organization_id == org_id,
             Vulnerability.status == "OPEN"
         ).group_by(Vulnerability.resource_type).all()
-        
+
+        return {
+            "total_open_vulnerabilities": total_vulns,
+            "average_cvss_score": round(float(avg_cvss), 2),
+            "severity_distribution": {r[0]: r[1] for r in severity_counts},
+            "resource_distribution": {r[0]: r[1] for r in resource_counts}
+        }
+
     def get_scan_pass_rates(self, db: Session, org_id: str) -> List[Dict[str, Any]]:
         """Real per-scan pass rates from completed scans that evaluated at least one check."""
         scans = db.query(Scan).filter(
@@ -49,12 +56,5 @@ class AnalyticsService:
                     "score": round(s.passed_checks / total * 100.0, 2),
                 })
         return points
-
-        return {
-            "total_open_vulnerabilities": total_vulns,
-            "average_cvss_score": round(float(avg_cvss), 2),
-            "severity_distribution": {r[0]: r[1] for r in severity_counts},
-            "resource_distribution": {r[0]: r[1] for r in resource_counts}
-        }
 
 analytics_service = AnalyticsService()

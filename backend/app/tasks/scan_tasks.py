@@ -212,6 +212,9 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
         scan.failed_checks = failed_checks
         scan.passed_checks = passed_checks
         scan.completed_at = datetime.utcnow()
+        # Last-scanned means a scan actually finished, not merely dispatched:
+        # a scan that fails or is still running must not move this timestamp.
+        cloud_account.last_scanned_at = scan.completed_at
         db.commit()
         
         logger.info(f"Post-scan execution successfully finished. Vulnerabilities found: {len(findings)}")

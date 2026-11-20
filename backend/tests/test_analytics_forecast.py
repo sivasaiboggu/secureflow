@@ -6,7 +6,7 @@ import unittest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.config.database import Base
-from app.database.models import Organization, CloudAccount, Scan
+from app.database.models import Organization, CloudAccount, Scan, Vulnerability
 from app.services.analytics_service import analytics_service
 from app.ml.risk_forecaster import RiskForecaster
 
@@ -39,6 +39,42 @@ class PassRateTests(unittest.TestCase):
         self._scan('s3', 'COMPLETED', 5, 5, 1)
         points = analytics_service.get_scan_pass_rates(self.db, 'org')
         self.assertEqual([p['score'] for p in points], [50.0, 80.0])
+
+class SummaryStatsTests(unittest.TestCase):
+    """Regression: get_summary_stats must return its dict (it previously
+    fell through and returned None, so GET /analytics/summary failed)."""
+
+    def setUp(self):
+        self.engine = create_engine('sqlite:///:memory:')
+        Base.metadata.create_all(self.engine)
+        self.db = sessionmaker(bind=self.engine)()
+        self.db.add(Organization(id='org', name='Synthetic'))
+        self.db.add(CloudAccount(id='account', name='Demo', provider='aws', organization_id='org', credentials={'scan_mode': 'demo'}, is_active=True))
+        self.db.add(Scan(id='s1', cloud_account_id='account', organization_id='org', status='COMPLETED'))
+        self.db.add_all([
+            Vulnerability(id='v1', scan_id='s1', resource_id='bucket-1', resource_type='S3_BUCKET', vulnerability_type='PUBLIC_ACCESS', severity='CRITICAL', cvss_score=9.5, title='Public bucket', status='OPEN'),
+            Vulnerability(id='v2', scan_id='s1', resource_id='bucket-2', resource_type='S3_BUCKET', vulnerability_type='NO_ENCRYPTION', severity='HIGH', cvss_score=7.0, title='Unencrypted bucket', status='OPEN'),
+            Vulnerability(id='v3', scan_id='s1', resource_id='i-1', resource_type='EC2_INSTANCE', vulnerability_type='IMDS', severity='LOW', cvss_score=2.0, title='IMDSv1', status='REMEDIATED'),
+        ])
+        self.db.commit()
+
+    def tearDown(self):
+        self.db.close()
+
+    def test_summary_counts_only_open_findings(self):
+        stats = analytics_service.get_summary_stats(self.db, 'org')
+        self.assertIsNotNone(stats)
+        self.assertEqual(stats['total_open_vulnerabilities'], 2)
+        self.assertEqual(stats['severity_distribution'], {'CRITICAL': 1, 'HIGH': 1})
+        self.assertEqual(stats['resource_distribution'], {'S3_BUCKET': 2})
+        self.assertEqual(stats['average_cvss_score'], 8.25)
+
+    def test_summary_empty_org_returns_zeros_not_none(self):
+        stats = analytics_service.get_summary_stats(self.db, 'other-org')
+        self.assertEqual(stats['total_open_vulnerabilities'], 0)
+        self.assertEqual(stats['severity_distribution'], {})
+        self.assertEqual(stats['average_cvss_score'], 0.0)
+
 
 class ForecasterHonestyTests(unittest.TestCase):
     def setUp(self):

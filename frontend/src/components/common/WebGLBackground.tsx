@@ -1,7 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 
-export const WebGLBackground: React.FC = () => {
+interface WebGLBackgroundProps {
+  /** false in light mode: warm paper background with deeper lime dots. */
+  dark?: boolean;
+}
+
+export const WebGLBackground: React.FC<WebGLBackgroundProps> = ({ dark = true }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Dot-grid palette per mode. Light mode needs a deeper lime so the dots
+  // stay visible on paper without washing the page out.
+  const palette = dark
+    ? { bg: '#080b12', dot: '231,255,114', vignette: '8,11,18', staticAlpha: 0.08 }
+    : { bg: '#F4F1E9', dot: '101,163,13', vignette: '244,241,233', staticAlpha: 0.1 };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -48,8 +59,8 @@ export const WebGLBackground: React.FC = () => {
 
       // Soft vignette background
       const grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.75);
-      grad.addColorStop(0, 'rgba(10,13,20,0)');
-      grad.addColorStop(1, 'rgba(8,11,18,0.85)');
+      grad.addColorStop(0, `rgba(${palette.vignette},0)`);
+      grad.addColorStop(1, `rgba(${palette.vignette},0.85)`);
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
 
@@ -75,7 +86,7 @@ export const WebGLBackground: React.FC = () => {
 
           ctx.beginPath();
           ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(231,255,114,${alpha.toFixed(3)})`;
+          ctx.fillStyle = `rgba(${palette.dot},${alpha.toFixed(3)})`;
           ctx.fill();
         }
       }
@@ -89,7 +100,7 @@ export const WebGLBackground: React.FC = () => {
       draw();
     } else {
       // DOM fallback: static dot grid
-      ctx.fillStyle = 'rgba(231,255,114,0.08)';
+      ctx.fillStyle = `rgba(${palette.dot},${palette.staticAlpha})`;
       const W = window.innerWidth;
       const H = window.innerHeight;
       const cols = Math.ceil(W / spacing);
@@ -108,7 +119,7 @@ export const WebGLBackground: React.FC = () => {
       window.removeEventListener('resize', resize);
       window.removeEventListener('mousemove', onMouse);
     };
-  }, []);
+  }, [dark]);
 
   return (
     <canvas
@@ -120,7 +131,7 @@ export const WebGLBackground: React.FC = () => {
         left: 0,
         pointerEvents: 'none',
         zIndex: 0,
-        backgroundColor: '#080b12',
+        backgroundColor: palette.bg,
       }}
     />
   );

@@ -36,6 +36,27 @@ class WorkerTests(unittest.TestCase):
             setattr(self.worker,name,cls);self.scanners.append(cls)
     def tearDown(self):
         self.patcher.stop();self.engine.dispose()
+    def test_last_scanned_moves_only_on_completion(self):
+        self.assertTrue(self.worker.run_cloud_scan_task(Mock(), 'one', 'account', 'org'))
+        db = self.session()
+        scan = db.get(Scan, 'one')
+        account = db.get(CloudAccount, 'account')
+        self.assertEqual(scan.status, 'DEMO_COMPLETED')
+        self.assertIsNotNone(scan.completed_at)
+        self.assertEqual(account.last_scanned_at, scan.completed_at)
+        db.close()
+
+    def test_failed_scan_does_not_move_last_scanned(self):
+        from app.scanners.base import ScanUnavailable
+        self.scanners[0].return_value.scan.side_effect = ScanUnavailable('Synthetic denied')
+        context = Mock(); context.retry.side_effect = RuntimeError('retry requested')
+        with self.assertRaisesRegex(RuntimeError, 'retry requested'):
+            self.worker.run_cloud_scan_task(context, 'one', 'account', 'org')
+        db = self.session()
+        self.assertEqual(db.get(Scan, 'one').status, 'FAILED')
+        self.assertIsNone(db.get(CloudAccount, 'account').last_scanned_at)
+        db.close()
+
     def test_demo_status_and_distinct_finding_ids_across_runs(self):
         finding=dict(id='same-source-id',resource_type='S3_BUCKET',resource_id='synthetic',resource_name='demo',vulnerability_type='DEMO',cvss_score=1,title='[DEMO] Synthetic',description='Sample only',recommendation='None',remediation_steps=[],terraform_fix='',compliance_frameworks=[],cve_id=None,evidence={'synthetic':True,'scan_mode':'demo'})
         self.scanners[0].return_value.scan.return_value=[finding]

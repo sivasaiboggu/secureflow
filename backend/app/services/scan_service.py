@@ -58,10 +58,8 @@ class ScanService:
             db.rollback()
             raise ScanDispatchUnknown(scan_id) from None
 
-        # Update last scanned at timestamp
-        account.last_scanned_at = datetime.utcnow()
-        db.commit()
-        
+        # Do not stamp last_scanned_at here: dispatch is not a completed scan.
+        # The worker sets it only when a scan finishes (see scan_tasks).
         return scan
 
     def recover_interrupted_scans(self, db: Session, stale_after: timedelta = timedelta(minutes=35), now: Optional[datetime] = None) -> int:

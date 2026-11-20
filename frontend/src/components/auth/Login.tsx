@@ -93,11 +93,11 @@ export const Login: React.FC = () => {
             {error && (
               <div style={styles.errorBox}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-                  <circle cx="12" cy="12" r="10" stroke="#f87171" strokeWidth="1.5"/>
-                  <line x1="12" y1="8" x2="12" y2="13" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round"/>
-                  <circle cx="12" cy="16.5" r="0.8" fill="#f87171"/>
+                  <circle cx="12" cy="12" r="10" stroke="var(--sev-critical)" strokeWidth="1.5"/>
+                  <line x1="12" y1="8" x2="12" y2="13" stroke="var(--sev-critical)" strokeWidth="1.5" strokeLinecap="round"/>
+                  <circle cx="12" cy="16.5" r="0.8" fill="var(--sev-critical)"/>
                 </svg>
-                <span style={{ fontSize: 12, color: '#f87171', fontFamily: 'Geist Mono, monospace', letterSpacing: '0.05em' }}>
+                <span style={{ fontSize: 12, color: 'var(--sev-critical)', fontFamily: 'Geist Mono, monospace', letterSpacing: '0.05em' }}>
                   {error}
                 </span>
               </div>
@@ -115,7 +115,7 @@ export const Login: React.FC = () => {
                   style={styles.input}
                   placeholder="you@company.com"
                   onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(231,255,114,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(231,255,114,0.08)'; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(244,240,232,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--nexus-border-strong)'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
               </div>
 
@@ -130,7 +130,7 @@ export const Login: React.FC = () => {
                   style={styles.input}
                   placeholder="••••••••••"
                   onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(231,255,114,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(231,255,114,0.08)'; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(244,240,232,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--nexus-border-strong)'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
               </div>
 
@@ -185,7 +185,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     justifyContent: 'space-between',
     padding: '48px 56px',
-    borderRight: '0.8px solid rgba(244,240,232,0.08)',
+    borderRight: '0.8px solid var(--nexus-border-soft)',
     position: 'relative',
   },
   brandContent: {
@@ -206,14 +206,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 500,
     letterSpacing: '0.28em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(158,163,160,0.7)',
+    color: 'var(--nexus-text-muted)',
   },
   displayText: {
     fontSize: 'clamp(48px, 5vw, 80px)',
     fontWeight: 500,
     lineHeight: 1.0,
     letterSpacing: '-0.05em',
-    color: '#F4F0E8',
+    color: 'var(--nexus-text-primary)',
     margin: 0,
   },
   brandSub: {
@@ -223,7 +223,7 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: '20px',
     letterSpacing: '0.18em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(158,163,160,0.65)',
+    color: 'var(--nexus-text-muted)',
   },
   statsRow: {
     display: 'flex',
@@ -246,7 +246,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 10,
     letterSpacing: '0.16em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(158,163,160,0.65)',
+    color: 'var(--nexus-text-muted)',
   },
   tabRow: {
     display: 'flex',
@@ -258,15 +258,15 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     letterSpacing: '0.12em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(158,163,160,0.6)',
+    color: 'var(--nexus-text-muted)',
     padding: '6px 14px',
     borderRadius: 0,
     cursor: 'pointer',
     borderBottom: '0.8px solid transparent',
   },
   tabActive: {
-    color: '#F4F0E8',
-    borderBottom: '0.8px solid rgba(244,240,232,0.4)',
+    color: 'var(--nexus-text-primary)',
+    borderBottom: '0.8px solid var(--nexus-border-bright)',
   },
   formPanel: {
     flex: '0 0 420px',
@@ -284,20 +284,20 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'absolute',
     inset: -1,
     borderRadius: 16,
-    background: 'radial-gradient(ellipse at top, rgba(244,240,232,0.18) 0.5px, transparent 0.5px)',
+    background: 'radial-gradient(ellipse at top, var(--nexus-border-bright) 0.5px, transparent 0.5px)',
     pointerEvents: 'none',
     zIndex: 0,
   },
   cardInner: {
     position: 'relative',
     zIndex: 1,
-    background: 'rgba(14,18,27,0.85)',
+    background: 'var(--nexus-surface)',
     backdropFilter: 'blur(24px)',
     WebkitBackdropFilter: 'blur(24px)',
-    border: '0.8px solid rgba(244,240,232,0.12)',
+    border: '0.8px solid var(--nexus-border)',
     borderRadius: 16,
     padding: '36px 32px',
-    boxShadow: 'rgba(0,0,0,0.45) 0px 18px 60px 0px, rgba(255,255,255,0.06) 0px 1px 0px 0px inset',
+    boxShadow: 'rgba(0,0,0,0.45) 0px 18px 60px 0px, var(--nexus-elevated-bg) 0px 1px 0px 0px inset',
   },
   formLogo: {
     marginBottom: 20,
@@ -308,19 +308,19 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 500,
     letterSpacing: '0.28em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(158,163,160,0.6)',
+    color: 'var(--nexus-text-muted)',
     marginBottom: 8,
   },
   formTitle: {
     fontSize: 28,
     fontWeight: 500,
     letterSpacing: '-0.04em',
-    color: '#F4F0E8',
+    color: 'var(--nexus-text-primary)',
     marginBottom: 6,
   },
   formSub: {
     fontSize: 13,
-    color: 'rgba(158,163,160,0.75)',
+    color: 'var(--nexus-text-muted)',
     marginBottom: 28,
     lineHeight: 1.5,
   },
@@ -350,16 +350,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     letterSpacing: '0.2em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(158,163,160,0.7)',
+    color: 'var(--nexus-text-muted)',
   },
   input: {
-    background: 'rgba(255,255,255,0.04)',
-    border: '0.8px solid rgba(244,240,232,0.15)',
+    background: 'var(--nexus-input-bg)',
+    border: '0.8px solid var(--nexus-border-strong)',
     borderRadius: 10,
     padding: '11px 14px',
     fontSize: 14,
     fontFamily: '"Geist", sans-serif',
-    color: '#F4F0E8',
+    color: 'var(--nexus-text-primary)',
     outline: 'none',
     transition: 'border-color 150ms ease, box-shadow 150ms ease',
     width: '100%',
@@ -384,7 +384,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'inline-block',
     width: 12,
     height: 12,
-    border: '2px solid rgba(8,11,18,0.3)',
+    border: '2px solid var(--nexus-border-strong)',
     borderTopColor: '#080b12',
     borderRadius: '50%',
     animation: 'spin 0.7s linear infinite',
@@ -392,8 +392,8 @@ const styles: Record<string, React.CSSProperties> = {
   hint: {
     marginTop: 24,
     padding: '12px 14px',
-    background: 'rgba(255,255,255,0.03)',
-    border: '0.8px solid rgba(244,240,232,0.08)',
+    background: 'var(--nexus-input-bg)',
+    border: '0.8px solid var(--nexus-border-soft)',
     borderRadius: 8,
     display: 'flex',
     flexDirection: 'column' as const,
@@ -404,7 +404,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 9,
     letterSpacing: '0.22em',
     textTransform: 'uppercase' as const,
-    color: 'rgba(158,163,160,0.5)',
+    color: 'var(--nexus-text-faint)',
   },
   hintCode: {
     fontFamily: '"Geist Mono", monospace',

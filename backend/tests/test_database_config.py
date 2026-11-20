@@ -44,3 +44,13 @@ class DatabaseConfigurationTests(unittest.TestCase):
         self.assertEqual(create.call_args.args[0], url)
         self.assertTrue(create.call_args.kwargs['pool_pre_ping'])
         self.assertNotIn('connect_args', create.call_args.kwargs)
+
+    def test_default_driver_dependency_is_declared(self):
+        """SQLAlchemy 2 defaults postgresql:// to the psycopg (v3) driver,
+        so the driver must be an installed dependency — the URL itself is
+        passed through exactly and must never be rewritten to work around
+        a missing driver."""
+        for name in ('requirements.txt', 'requirements-lite.txt'):
+            text = (Path(__file__).parents[1] / name).read_text()
+            self.assertIn('psycopg[binary]', text)
+        import psycopg  # noqa: F401  (fails loudly if the dep is dropped)
