@@ -333,6 +333,10 @@ those modules as dormant references, not active capabilities. The analytics
 route contracts now describe heuristic review and optional local models instead
 of claiming applied NLP or autoencoder detection.
 
+### Dashboard UX
+- The dashboard shows a compliance overview with per-framework progress bars (CIS, NIST, PCI DSS, HIPAA, GDPR) from `GET /api/v1/compliance/summary`, and the top five critical/high findings by CVSS with a link to the findings page. Both sections show an honest empty state when there is nothing to show — no invented scores.
+- The vulnerabilities page is a searchable, filterable list (severity pills with counts, open/remediated status, text search across title, resource and type). Selecting a finding opens a slide-over drawer with numbered remediation steps derived from the recommendation, compliance frameworks, a copyable Terraform fix, and the review-only "Save plan for review" action. Escape, backdrop click, or the close button dismisses it.
+
 ## 🧪 Running tests
 
 Backend (uses the project's virtualenv; no live database or cloud needed):

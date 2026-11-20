@@ -224,6 +224,12 @@ html, body, #root {
   z-index: 1;
 }
 
+/* Dashboard + findings drawer on narrow screens. */
+@media (max-width: 700px) {
+  .dashboard-page { padding: 22px 14px !important; }
+  .dashboard-page h1 { font-size: 26px !important; }
+}
+
 /* Keep finding details and review-only controls reachable on narrow screens. */
 .finding-grid > * { min-width: 0; }
 .finding-header { gap: 16px; flex-wrap: wrap; }

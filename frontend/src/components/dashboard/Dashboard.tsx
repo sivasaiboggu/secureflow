@@ -3,6 +3,7 @@ import { Grid, Skeleton } from '@mui/material';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid } from 'recharts';
 import { motion, type Variants } from 'framer-motion';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useToast } from '../common/ToastContext';
 
@@ -117,6 +118,8 @@ export const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasData, setHasData] = useState(false);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [compliance, setCompliance] = useState<Record<string, number> | null>(null);
+  const [topFindings, setTopFindings] = useState<any[]>([]);
   const [severityData, setSeverityData] = useState<any[]>([]);
   const [trendData, setTrendData] = useState<any[]>([]);
   const [lastUpdated, setLastUpdated] = useState('');
@@ -129,10 +132,11 @@ export const Dashboard: React.FC = () => {
     try {
       // The analytics summary is best-effort: if it is unavailable the
       // scans/vulnerabilities lists below are the fallback for every total.
-      const [scansRes, vulnsRes, summaryRes] = await Promise.allSettled([
+      const [scansRes, vulnsRes, summaryRes, complianceRes] = await Promise.allSettled([
         api.get('/scans'),
         api.get('/vulnerabilities'),
         api.get('/analytics/summary'),
+        api.get('/compliance/summary'),
       ]);
       if (scansRes.status === 'rejected') throw scansRes.reason;
       if (vulnsRes.status === 'rejected') throw vulnsRes.reason;
@@ -163,6 +167,13 @@ export const Dashboard: React.FC = () => {
       }
 
       setSummary(summaryData);
+      setCompliance(complianceRes.status === 'fulfilled' ? complianceRes.value.data : null);
+      setTopFindings(
+        [...vulns]
+          .filter((v: any) => v.severity === 'CRITICAL' || v.severity === 'HIGH')
+          .sort((a: any, b: any) => (b.cvss_score || 0) - (a.cvss_score || 0))
+          .slice(0, 5)
+      );
       setStats({ totalScans: scans.length, totalVulnerabilities: totalVulns, complianceScore: compliance, criticalCount: critical, highCount: high, mediumCount: medium, lowCount: low });
       setSeverityData([
         { name: 'Critical', count: critical, fill: 'var(--sev-critical)' },
@@ -216,7 +227,7 @@ export const Dashboard: React.FC = () => {
     : [];
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" style={{ padding: '32px', maxWidth: 1400, margin: '0 auto' }}>
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="dashboard-page" style={{ padding: '32px', maxWidth: 1400, margin: '0 auto' }}>
       {/* Header */}
       <motion.div variants={itemVariants} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40, flexWrap: 'wrap', gap: 16 }}>
         <div>
@@ -368,6 +379,72 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
       </motion.div>
+      {/* Compliance overview + top findings */}
+      <Grid container spacing={3} sx={{ mt: 4 }}>
+        <Grid item xs={12} md={6}>
+          <motion.div variants={itemVariants} style={{ ...glassPanel, padding: '24px', height: '100%' }}>
+            <p style={{ ...monoLabel, marginBottom: 6 }}>COMPLIANCE</p>
+            <h3 style={{ fontFamily: '"Geist", sans-serif', fontSize: 18, fontWeight: 500, letterSpacing: '-0.03em', color: 'var(--nexus-text-primary)', marginBottom: 20 }}>Framework Overview</h3>
+            {(!compliance || Object.keys(compliance).length === 0) ? (
+              <div style={{ minHeight: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.8px dashed var(--nexus-border-strong)', borderRadius: 10 }}>
+                <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'var(--nexus-text-faint)', letterSpacing: '0.06em', textAlign: 'center', padding: '0 24px' }}>
+                  No framework has evaluated checks yet. Scores appear after a completed scan.
+                </p>
+              </div>
+            ) : (
+              Object.entries(compliance)
+                .sort((a, b) => a[1] - b[1])
+                .map(([fw, score]) => {
+                  const barColor = score >= 80 ? 'var(--sev-low)' : score >= 60 ? 'var(--sev-medium)' : 'var(--sev-critical)';
+                  return (
+                    <div key={fw} style={{ marginBottom: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, letterSpacing: '0.12em', color: 'var(--nexus-text-secondary)' }}>{fw.replace('_', ' ')}</span>
+                        <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, fontWeight: 700, color: barColor }}>{score.toFixed(0)}%</span>
+                      </div>
+                      <div style={{ height: 8, borderRadius: 4, background: 'var(--nexus-elevated-bg)', overflow: 'hidden' }}>
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${score}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} style={{ height: '100%', borderRadius: 4, background: barColor }} />
+                      </div>
+                    </div>
+                  );
+                })
+            )}
+          </motion.div>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <motion.div variants={itemVariants} style={{ ...glassPanel, padding: '24px', height: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20 }}>
+              <div>
+                <p style={{ ...monoLabel, marginBottom: 6 }}>ACT NOW</p>
+                <h3 style={{ fontFamily: '"Geist", sans-serif', fontSize: 18, fontWeight: 500, letterSpacing: '-0.03em', color: 'var(--nexus-text-primary)', margin: 0 }}>Top Critical Findings</h3>
+              </div>
+              <Link to="/vulnerabilities" style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.12em', color: 'var(--nexus-accent-text)', textDecoration: 'none' }}>VIEW ALL →</Link>
+            </div>
+            {topFindings.length === 0 ? (
+              <div style={{ minHeight: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.8px dashed var(--nexus-border-strong)', borderRadius: 10 }}>
+                <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'var(--nexus-text-faint)', letterSpacing: '0.06em', textAlign: 'center', padding: '0 24px' }}>
+                  No critical or high findings open. Good posture.
+                </p>
+              </div>
+            ) : (
+              topFindings.map((v: any) => (
+                <Link key={v.id} to="/vulnerabilities" style={{ textDecoration: 'none', display: 'block', padding: '12px 0', borderBottom: '0.8px solid var(--nexus-border-soft)' }}>
+                  <span style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontFamily: '"Geist", sans-serif', fontSize: 13, fontWeight: 500, color: 'var(--nexus-text-primary)', lineHeight: 1.4 }}>{v.title}</span>
+                      <span style={{ display: 'block', fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'var(--nexus-text-faint)', marginTop: 4 }}>{v.resource_type} / {v.resource_id}</span>
+                    </span>
+                    <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                      <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: v.severity === 'CRITICAL' ? 'var(--sev-critical)' : 'var(--sev-high)' }}>{v.severity}</span>
+                      <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 13, fontWeight: 700, color: 'var(--nexus-text-primary)' }}>{v.cvss_score?.toFixed(1)}</span>
+                    </span>
+                  </span>
+                </Link>
+              ))
+            )}
+          </motion.div>
+        </Grid>
+      </Grid>
     </motion.div>
   );
 };
