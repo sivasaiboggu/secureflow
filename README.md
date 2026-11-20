@@ -332,3 +332,27 @@ in-app alert records and frozen model artifacts are the real behavior. Treat
 those modules as dormant references, not active capabilities. The analytics
 route contracts now describe heuristic review and optional local models instead
 of claiming applied NLP or autoencoder detection.
+
+## 🧪 Running tests
+
+Backend (uses the project's virtualenv; no live database or cloud needed):
+
+```bash
+cd backend
+.venv/bin/python -m pytest tests -q
+```
+
+Frontend build (also type-checks; route pages are lazy-loaded, so the
+initial bundle is the login shell plus shared chunks):
+
+```bash
+cd frontend
+npm run build
+```
+
+Known state: the backend suite has one pre-existing failure,
+`test_readiness_reports_ready_with_a_working_database`, which needs a live
+PostgreSQL instance and fails identically on a clean tree — it is not a
+regression. Timestamps are naive UTC by design (all `DateTime` columns are
+timezone-naive); `backend/app/utils/timestamps.py` is the single place that
+produces them, after the deprecated `datetime.utcnow()` was removed.

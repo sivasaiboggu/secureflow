@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timedelta
+from app.utils.timestamps import utcnow
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
@@ -78,7 +79,7 @@ class ScanService:
         are never touched, and no finding rows can exist for an interrupted run
         because findings commit in the same transaction as the final status.
         """
-        now = now or datetime.utcnow()
+        now = now or utcnow()
         cutoff = now - stale_after
         recovered = db.query(Scan).filter(
             Scan.status == "RUNNING",

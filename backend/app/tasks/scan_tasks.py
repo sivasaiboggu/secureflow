@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from app.utils.timestamps import utcnow
 import uuid
 from typing import Dict, Any
 from app.tasks.celery_app import celery_app
@@ -41,7 +42,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
             Scan.organization_id == organization_id,
             Scan.cloud_account_id == cloud_account_id,
             Scan.status.in_(["PENDING", "FAILED"]),
-        ).update({"status": "RUNNING", "progress": 5.0, "completed_at": None, "started_at": datetime.utcnow()}, synchronize_session=False)
+        ).update({"status": "RUNNING", "progress": 5.0, "completed_at": None, "started_at": utcnow()}, synchronize_session=False)
         db.commit()
         if claimed != 1:
             # Another worker owns RUNNING, or the status is not executable.
@@ -211,7 +212,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
         scan.vulnerabilities_found = len(findings)
         scan.failed_checks = failed_checks
         scan.passed_checks = passed_checks
-        scan.completed_at = datetime.utcnow()
+        scan.completed_at = utcnow()
         # Last-scanned means a scan actually finished, not merely dispatched:
         # a scan that fails or is still running must not move this timestamp.
         cloud_account.last_scanned_at = scan.completed_at
@@ -229,7 +230,7 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
             scan = db.query(Scan).filter(Scan.id == scan_id, Scan.organization_id == organization_id, Scan.cloud_account_id == cloud_account_id).first()
             if scan and owns_scan:
                 scan.status = "FAILED"
-                scan.completed_at = datetime.utcnow()
+                scan.completed_at = utcnow()
                 db.commit()
         except Exception:
             logger.critical("Scan failure state could not be saved | Scan ID: %s", scan_id)

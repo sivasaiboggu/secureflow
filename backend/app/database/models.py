@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, ForeignKey, JSON, Text, Enum
 from sqlalchemy.orm import relationship
 import datetime
+from app.utils.timestamps import utcnow
 from app.config.database import Base
 
 class Organization(Base):
@@ -8,7 +9,7 @@ class Organization(Base):
     
     id = Column(String(50), primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     
     users = relationship("User", back_populates="organization", cascade="all, delete-orphan")
     cloud_accounts = relationship("CloudAccount", back_populates="organization", cascade="all, delete-orphan")
@@ -24,7 +25,7 @@ class User(Base):
     role = Column(String(20), default="user")  # admin, manager, user
     is_active = Column(Boolean, default=True)
     organization_id = Column(String(50), ForeignKey("organizations.id"))
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     
     organization = relationship("Organization", back_populates="users")
 
@@ -38,7 +39,7 @@ class CloudAccount(Base):
     credentials = Column(JSON, nullable=False)  # Connector JSON; currently not encrypted at application level
     is_active = Column(Boolean, default=True)
     last_scanned_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     
     organization = relationship("Organization", back_populates="cloud_accounts")
     scans = relationship("Scan", back_populates="cloud_account", cascade="all, delete-orphan")
@@ -54,7 +55,7 @@ class Scan(Base):
     vulnerabilities_found = Column(Integer, default=0)
     failed_checks = Column(Integer, default=0)
     passed_checks = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     started_at = Column(DateTime, nullable=True)  # last RUNNING claim time; NULL only on rows predating tracking
     completed_at = Column(DateTime, nullable=True)
     
@@ -81,7 +82,7 @@ class Vulnerability(Base):
     compliance_frameworks = Column(JSON)  # e.g., ["CIS AWS 1.2", "NIST AC-3"]
     cvss_score = Column(Float)
     cve_id = Column(String(30), nullable=True)
-    discovered_at = Column(DateTime, default=datetime.datetime.utcnow)
+    discovered_at = Column(DateTime, default=utcnow)
     status = Column(String(20), default="OPEN")  # OPEN, IN_PROGRESS, REMEDIATED, IGNORED
     evidence = Column(JSON)
     assigned_to = Column(String(100), nullable=True)
@@ -100,7 +101,7 @@ class ComplianceCheck(Base):
     status = Column(String(10), nullable=False)  # PASS, FAIL
     resource_id = Column(String(200), nullable=False)
     evidence = Column(JSON)
-    checked_at = Column(DateTime, default=datetime.datetime.utcnow)
+    checked_at = Column(DateTime, default=utcnow)
     
     scan = relationship("Scan", back_populates="compliance_checks")
 
@@ -128,7 +129,7 @@ class AuditLog(Base):
     action = Column(String(100), nullable=False)  # e.g., "TRIGGER_SCAN", "APPLY_REMEDIATION"
     details = Column(JSON)
     ip_address = Column(String(45))
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=utcnow)
 
 class Alert(Base):
     __tablename__ = "alerts"
@@ -140,7 +141,7 @@ class Alert(Base):
     message = Column(Text, nullable=False)
     channels_sent = Column(JSON)  # e.g. ["SLACK", "EMAIL"]
     status = Column(String(20), default="ACTIVE")  # ACTIVE, ACKNOWLEDGED, RESOLVED
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 class MLModel(Base):
     __tablename__ = "ml_models"
@@ -151,4 +152,4 @@ class MLModel(Base):
     metrics = Column(JSON)  # Accuracy, F1, Loss, etc.
     drift_score = Column(Float, default=0.0)
     status = Column(String(20), default="ACTIVE")  # ACTIVE, DEPRECATED, CANDIDATE
-    last_trained_at = Column(DateTime, default=datetime.datetime.utcnow)
+    last_trained_at = Column(DateTime, default=utcnow)

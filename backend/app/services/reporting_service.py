@@ -51,7 +51,6 @@ class ReportingService:
         return report
 
 def datetime_now_iso() -> str:
-    import datetime
-    return datetime.datetime.utcnow().isoformat()
+    return utcnow_iso()
 
 reporting_service = ReportingService()

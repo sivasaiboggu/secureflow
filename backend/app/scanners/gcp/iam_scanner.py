@@ -1,6 +1,7 @@
 import logging
 from typing import List, Dict, Any
 from datetime import datetime
+from app.utils.timestamps import utcnow_iso
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ class IAMScanner:
             "compliance_frameworks": frameworks,
             "cvss_score": score,
             "cve_id": None,
-            "discovered_at": datetime.utcnow().isoformat(),
+            "discovered_at": utcnow_iso(),
             "evidence": evidence
         }
 

@@ -1,5 +1,6 @@
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
+from app.utils.timestamps import utcnow
 from jose import jwt
 from typing import Optional, Any
 from app.config.settings import settings
@@ -14,9 +15,9 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(subject: str | Any, expires_delta: Optional[timedelta] = None) -> str:
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         
     # Access tokens carry an explicit type so refresh tokens, which are
     # long-lived, can never authenticate API requests directly.
@@ -26,9 +27,9 @@ def create_access_token(subject: str | Any, expires_delta: Optional[timedelta] =
 
 def create_refresh_token(subject: str | Any, expires_delta: Optional[timedelta] = None) -> str:
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        expire = utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
         
     to_encode = {"exp": expire, "sub": str(subject), "type": "refresh"}
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

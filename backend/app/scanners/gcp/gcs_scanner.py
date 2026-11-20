@@ -1,6 +1,7 @@
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from app.utils.timestamps import utcnow_iso
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ class GCSScanner:
                 "status": "FAIL",
                 "resource_id": finding["resource_id"],
                 "evidence": finding["evidence"],
-                "checked_at": datetime.utcnow().isoformat()
+                "checked_at": utcnow_iso()
             })
         return checks
 
@@ -87,7 +88,7 @@ class GCSScanner:
             "compliance_frameworks": frameworks,
             "cvss_score": score,
             "cve_id": None,
-            "discovered_at": datetime.utcnow().isoformat(),
+            "discovered_at": utcnow_iso(),
             "evidence": evidence
         }
 

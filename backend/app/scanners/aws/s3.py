@@ -1,6 +1,7 @@
 import boto3
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from app.utils.timestamps import utcnow_iso
 import logging
 import uuid
 from botocore.exceptions import ClientError
@@ -300,7 +301,7 @@ class S3Scanner(BaseScanner):
             "compliance_frameworks": frameworks,
             "cvss_score": score,
             "cve_id": None,
-            "discovered_at": datetime.utcnow().isoformat(),
+            "discovered_at": utcnow_iso(),
             "evidence": evidence
         }
 

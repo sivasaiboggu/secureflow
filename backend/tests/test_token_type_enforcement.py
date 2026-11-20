@@ -1,6 +1,7 @@
 """Token-type contract: only access tokens authenticate API calls. Isolated SQLite only."""
 import unittest
 from datetime import datetime, timedelta
+from app.utils.timestamps import utcnow
 
 from fastapi import Depends, FastAPI
 from fastapi.responses import JSONResponse
@@ -56,7 +57,7 @@ class TokenTypeEnforcementTests(unittest.TestCase):
         return {'Authorization': f'Bearer {token}'}
 
     def unsigned_type_token(self, token_type):
-        claims = {'exp': datetime.utcnow() + timedelta(minutes=5), 'sub': 'user-1'}
+        claims = {'exp': utcnow() + timedelta(minutes=5), 'sub': 'user-1'}
         if token_type is not None:
             claims['type'] = token_type
         return jwt.encode(claims, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

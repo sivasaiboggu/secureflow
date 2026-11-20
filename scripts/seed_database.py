@@ -14,6 +14,7 @@ import sys
 import os
 import uuid
 import datetime
+from app.utils.timestamps import utcnow
 
 # Add backend directory to load application libraries
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../backend')))
@@ -136,7 +137,7 @@ def seed_db(argv=None, env=None):
             organization_id=org_id,
             credentials={"aws_access_key_id": "", "aws_secret_access_key": ""},
             is_active=True,
-            last_scanned_at=datetime.datetime.utcnow()
+            last_scanned_at=utcnow()
         )
         db.add(cloud_acc)
         print("Created AWS connection profile.")
@@ -152,8 +153,8 @@ def seed_db(argv=None, env=None):
             vulnerabilities_found=3,
             failed_checks=3,
             passed_checks=12,
-            created_at=datetime.datetime.utcnow() - datetime.timedelta(hours=2),
-            completed_at=datetime.datetime.utcnow() - datetime.timedelta(hours=1.8)
+            created_at=utcnow() - datetime.timedelta(hours=2),
+            completed_at=utcnow() - datetime.timedelta(hours=1.8)
         )
         db.add(history_scan)
         

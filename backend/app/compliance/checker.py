@@ -1,6 +1,7 @@
 import uuid
 from typing import List, Dict, Any
 from datetime import datetime
+from app.utils.timestamps import utcnow_iso
 
 class ComplianceEngine:
     """Calculates overall framework scores and evaluates audit rules alignment"""
@@ -34,7 +35,7 @@ class ComplianceEngine:
                         "description": finding["description"],
                         "recommendation": finding["recommendation"]
                     },
-                    "checked_at": datetime.utcnow().isoformat()
+                    "checked_at": utcnow_iso()
                 })
                 
         return compliance_checks

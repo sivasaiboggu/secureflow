@@ -5,6 +5,7 @@ from app.ml.training.train_anomaly import generate_synthetic_activity_logs, Anom
 from app.config.database import SessionLocal
 from app.database.models import MLModel
 import datetime
+from app.utils.timestamps import utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ def retrain_severity_model_task():
             ml_record = MLModel(id="severity-predictor", name="severity_predictor", version="1.0.0")
             db.add(ml_record)
             
-        ml_record.last_trained_at = datetime.datetime.utcnow()
+        ml_record.last_trained_at = utcnow()
         ml_record.metrics = {"accuracy": 0.89, "loss": 0.12}
         db.commit()
         logger.info("Severity model retrained and registered successfully.")
@@ -52,7 +53,7 @@ def retrain_anomaly_detector_task():
             ml_record = MLModel(id="anomaly-detector", name="anomaly_detector", version="1.0.0")
             db.add(ml_record)
             
-        ml_record.last_trained_at = datetime.datetime.utcnow()
+        ml_record.last_trained_at = utcnow()
         ml_record.metrics = {"threshold": detector.threshold}
         db.commit()
         logger.info("Anomaly detector retrained and registered successfully.")
