@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.config.database import get_db
 from app.api.deps import get_current_user
 from app.database.models import User, ComplianceCheck
@@ -60,5 +60,3 @@ def get_compliance_summary(db: Session = Depends(get_db), current_user: User = D
     ]
     
     return compliance_engine.calculate_scores(checks_list)
-
-from typing import Optional

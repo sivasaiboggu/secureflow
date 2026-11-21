@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Link, useNavigate, useLocation } from 'react-router-dom';
 import { CssBaseline } from '@mui/material';
-import { LayoutDashboard, ScanSearch, ShieldAlert, BarChart3, Cloud, Users, Sun, Moon, LogOut } from 'lucide-react';
+import { LayoutDashboard, ScanSearch, ShieldAlert, BarChart3, Cloud, Users, Bell, Sun, Moon, LogOut } from 'lucide-react';
 import { AppRoutes } from './routes';
 import { WebGLBackground } from './components/common/WebGLBackground';
 import { ApiUnavailableBanner } from './components/common/ApiUnavailableBanner';
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { label: 'Vulnerabilities', path: '/vulnerabilities', Icon: ShieldAlert },
   { label: 'Analytics', path: '/analytics', Icon: BarChart3 },
   { label: 'Cloud Accounts', path: '/settings/accounts', Icon: Cloud },
+  { label: 'Notifications', path: '/settings/notifications', Icon: Bell },
   { label: 'Users', path: '/settings/users', Icon: Users },
 ];
 

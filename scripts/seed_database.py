@@ -14,10 +14,14 @@ import sys
 import os
 import uuid
 import datetime
-from app.utils.timestamps import utcnow
 
-# Add backend directory to load application libraries
+# Add backend directory to load application libraries. This must run before
+# any `app.*` import: running `python scripts/seed_database.py` from the
+# repo root (as the README instructs) otherwise fails with
+# `ModuleNotFoundError: No module named 'app'`.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../backend')))
+
+from app.utils.timestamps import utcnow
 
 from app.config.database import SessionLocal, Base, engine
 from app.database.models import User, Organization, CloudAccount, Scan, Vulnerability, ComplianceCheck

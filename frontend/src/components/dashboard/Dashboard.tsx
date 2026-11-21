@@ -399,7 +399,7 @@ export const Dashboard: React.FC = () => {
                   return (
                     <div key={fw} style={{ marginBottom: 16 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, letterSpacing: '0.12em', color: 'var(--nexus-text-secondary)' }}>{fw.replace('_', ' ')}</span>
+                        <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, letterSpacing: '0.12em', color: 'var(--nexus-text-secondary)' }}>{fw.split('_').join(' ')}</span>
                         <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, fontWeight: 700, color: barColor }}>{score.toFixed(0)}%</span>
                       </div>
                       <div style={{ height: 8, borderRadius: 4, background: 'var(--nexus-elevated-bg)', overflow: 'hidden' }}>

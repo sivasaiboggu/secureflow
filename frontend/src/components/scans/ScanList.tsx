@@ -20,16 +20,19 @@ interface CloudAccount {
 }
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const map: Record<string, { bg: string; color: string }> = {
-    DEMO_COMPLETED: { bg: 'rgba(251,191,36,0.12)', color: 'var(--sev-medium)' },
-    COMPLETED: { bg: 'rgba(231,255,114,0.12)', color: 'var(--nexus-accent-text)' },
-    RUNNING: { bg: 'rgba(6,182,212,0.12)', color: 'var(--nexus-cyan-text)' },
-    PENDING: { bg: 'rgba(251,191,36,0.12)', color: 'var(--sev-medium)' },
-    FAILED: { bg: 'rgba(248,113,113,0.12)', color: 'var(--sev-critical)' },
+  // Border colours are explicit rgba values: appending an alpha suffix to a
+  // var(--...) colour (e.g. `var(--sev-high)40`) is invalid CSS, so the
+  // border was silently dropped and badges rendered borderless.
+  const map: Record<string, { bg: string; color: string; border: string }> = {
+    DEMO_COMPLETED: { bg: 'rgba(251,191,36,0.12)', color: 'var(--sev-medium)', border: 'rgba(251,191,36,0.35)' },
+    COMPLETED: { bg: 'rgba(231,255,114,0.12)', color: 'var(--nexus-accent-text)', border: 'rgba(231,255,114,0.35)' },
+    RUNNING: { bg: 'rgba(6,182,212,0.12)', color: 'var(--nexus-cyan-text)', border: 'rgba(6,182,212,0.35)' },
+    PENDING: { bg: 'rgba(251,191,36,0.12)', color: 'var(--sev-medium)', border: 'rgba(251,191,36,0.35)' },
+    FAILED: { bg: 'rgba(248,113,113,0.12)', color: 'var(--sev-critical)', border: 'rgba(248,113,113,0.35)' },
   };
-  const s = map[status] || { bg: 'var(--nexus-elevated-bg)', color: 'var(--nexus-text-muted)' };
+  const s = map[status] || { bg: 'var(--nexus-elevated-bg)', color: 'var(--nexus-text-muted)', border: 'var(--nexus-border-strong)' };
   return (
-    <span style={{ background: s.bg, color: s.color, border: `0.8px solid ${s.color}40`, borderRadius: 6, padding: '2px 8px', fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.1em', fontWeight: 600 }}>
+    <span style={{ background: s.bg, color: s.color, border: `0.8px solid ${s.border}`, borderRadius: 6, padding: '2px 8px', fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.1em', fontWeight: 600 }}>
       {status}
     </span>
   );
@@ -55,9 +58,21 @@ export const ScanList: React.FC = () => {
 
   useEffect(() => {
     fetchAll();
-    const interval = setInterval(fetchScans, 4000);
+    const interval = setInterval(() => {
+      // No polling while the tab is hidden: scans keep running server-side
+      // and the list refreshes when the tab is visible again.
+      if (!document.hidden) fetchScans();
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  // Escape closes the trigger-scan modal, matching the finding drawer.
+  useEffect(() => {
+    if (!showModal) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowModal(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showModal]);
 
   const fetchAll = async () => {
     await Promise.all([fetchScans(), fetchAccounts()]);
@@ -169,8 +184,15 @@ export const ScanList: React.FC = () => {
 
       {/* Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'var(--nexus-overlay)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--nexus-surface-strong)', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 16, padding: 24, width: 400, maxWidth: 'calc(100vw - 28px)', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'rgba(0,0,0,0.6) 0px 24px 80px' }}>
+        <div
+          onClick={() => setShowModal(false)}
+          style={{ position: 'fixed', inset: 0, background: 'var(--nexus-overlay)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div
+            role="dialog" aria-modal="true" aria-label="Start cloud scan"
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: 'var(--nexus-surface-strong)', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 16, padding: 24, width: 400, maxWidth: 'calc(100vw - 28px)', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'rgba(0,0,0,0.6) 0px 24px 80px' }}
+          >
             <h2 style={{ fontFamily: '"Geist", sans-serif', fontSize: 22, fontWeight: 500, letterSpacing: '-0.03em', color: 'var(--nexus-text-primary)', marginBottom: 6 }}>Start Cloud Scan</h2>
             <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'var(--nexus-text-muted)', letterSpacing: '0.1em', marginBottom: 28 }}>SELECT TARGET CLOUD ACCOUNT</p>
 

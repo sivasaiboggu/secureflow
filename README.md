@@ -1,4 +1,4 @@
-# SecureFlow - AI-Powered Cloud Security Posture Management (CSPM)
+# SecureFlow — Cloud Security Posture Management (CSPM) research prototype
 
 SecureFlow is a local cloud-security research prototype. It includes AWS listing/check workflows, explicit sample-data demos and review-only Terraform plans. It is not production-ready or a complete cloud compliance audit. No automatic cloud repairs are verified. Credential storage and policy/region coverage still need hardening.
 
@@ -357,14 +357,46 @@ npm run build
 Known state: the backend suite's one pre-existing failure,
 `test_readiness_reports_ready_with_a_working_database`, is FIXED in 1.0.1
 (the test harness evicted `sys.modules` entries mid-import; the fix keeps
-only the intended router swap). The suite is 140 passed, 0 failed with a
-live PostgreSQL instance — without one, that single readiness test still
-fails by design, since it tests readiness *with a working database*.
+only the intended router swap). The suite is 149 passed, 0 failed with a
+live PostgreSQL instance (140 in 1.0.1, plus 7 timestamp-contract tests and
+2 router-import regression tests added since) — without a live database,
+that single readiness test still fails by design, since it tests readiness
+*with a working database*.
 Timestamps are naive UTC by design (all `DateTime` columns are
 timezone-naive); `backend/app/utils/timestamps.py` is the single place that
 produces them, after the deprecated `datetime.utcnow()` was removed.
 
 ## Changelog
+
+### 1.0.2 (21 Nov 2026)
+- Patch release. **The API could not start**: `compliance.py` used
+  `Optional` in a route signature while importing it only at the bottom of
+  the file, so `import app.main` raised `NameError`. Fixed by importing it
+  at the top; a new `tests/test_router_import.py` imports the real router
+  and app so this class of bug is caught (the old suite stubbed the router
+  and never saw it). Full suite now 149 passed with a live PostgreSQL
+  instance.
+- `scripts/seed_database.py` failed as documented (`python
+  scripts/seed_database.py` from the repo root raised `ModuleNotFoundError:
+  No module named 'app'` — the `sys.path` fix-up ran after the first
+  `app.*` import). The path fix-up now runs first.
+- Frontend: severity/status badge borders now render (the old code appended
+  an alpha suffix to a `var(--...)` colour, which is invalid CSS, so badges
+  were borderless); framework names render fully (`NIST_800_53` showed as
+  "NIST 800_53"); the scan modal closes with Escape/backdrop click and
+  polling pauses while the tab is hidden; notification preferences now
+  persist in the browser's localStorage with honest copy (there is no
+  server endpoint for them yet) and the page is linked from the nav; the
+  unused pre-Nexus `Layout`/`Sidebar`/`Header` components were removed;
+  an inline SVG favicon stops the `/favicon.ico` 404.
+- Dependencies (safe patch/minor only): boto3/botocore 1.44.7 → 1.44.9,
+  PyYAML 6.0.3 → 6.0.4, certifi 2026.10.23 → 2026.11.20; @reduxjs/toolkit
+  2.12.0 → 2.15.0, axios 1.20.0 → 1.21.1, lucide-react 1.76.0 → 1.77.0,
+  react-redux 9.3.0 → 9.3.1. Deliberately left: python-dateutil 4.0.0
+  (major), MUI 5 → 9, React 18 → 19, react-router 6 → 7, recharts 2 → 3,
+  Vite 5 → 8, TypeScript 5 → 7 — all majors, out of scope for a patch.
+  `celery`/`redis` were added to `requirements-lite.txt`: the API imports
+  scan tasks at startup, so a lite install could not boot it.
 
 ### 1.0.1 (21 Nov 2026)
 - Patch release: no feature changes. The pre-existing
