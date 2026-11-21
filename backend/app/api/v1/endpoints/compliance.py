@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from app.config.database import get_db
@@ -12,18 +12,25 @@ router = APIRouter()
 def get_compliance_checks(
     framework: Optional[str] = None,
     status: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Lists compliance controls verified by scanning agents"""
     from app.database.models import Scan
     query = db.query(ComplianceCheck).join(Scan).filter(Scan.organization_id == current_user.organization_id)
-    
+
     if framework:
         query = query.filter(ComplianceCheck.framework == framework.upper())
     if status:
         query = query.filter(ComplianceCheck.status == status.upper())
-        
+
+    # Checks grow with every scan; an unbounded .all() hands a long-lived
+    # tenant one ever-larger payload. Same skip/limit contract as the scan
+    # and finding lists. Ordered newest-first so a page is stable.
+    query = query.order_by(ComplianceCheck.checked_at.desc()).offset(skip).limit(limit)
+
     return [
         {
             "id": c.id,
@@ -44,9 +51,13 @@ def get_compliance_summary(db: Session = Depends(get_db), current_user: User = D
     from app.compliance.checker import compliance_engine
     from app.database.models import Scan
     
+    # A demo scan is a finished scan: its checks were evaluated, so it
+    # counts here exactly like a real one. Filtering to COMPLETED only
+    # left the dashboard's framework overview empty after every demo
+    # scan — the main way the app is tried — even though checks existed.
     latest_scan = db.query(Scan).filter(
         Scan.organization_id == current_user.organization_id,
-        Scan.status == "COMPLETED"
+        Scan.status.in_(["COMPLETED", "DEMO_COMPLETED"])
     ).order_by(Scan.completed_at.desc()).first()
     
     if not latest_scan:

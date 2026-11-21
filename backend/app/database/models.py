@@ -36,7 +36,7 @@ class CloudAccount(Base):
     name = Column(String(100), nullable=False)
     provider = Column(String(20), nullable=False)  # aws, gcp, azure
     organization_id = Column(String(50), ForeignKey("organizations.id"), nullable=False)
-    credentials = Column(JSON, nullable=False)  # Connector JSON; currently not encrypted at application level
+    credentials = Column(JSON, nullable=False)  # Sealed AES-GCM envelope (app/security/credential_store.py); demo rows store {"scan_mode": "demo"} only
     is_active = Column(Boolean, default=True)
     last_scanned_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=utcnow)

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 import uuid
 import logging
@@ -77,6 +78,17 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)):
             refresh_token=refresh_token,
             user=UserResponse.model_validate(new_user)
         )
+    except IntegrityError:
+        # The pre-check above and this commit are not atomic: two
+        # concurrent registrations for the same email can both pass the
+        # check, and the loser's commit then hits the unique constraint.
+        # That is a duplicate registration, not a server failure — answer
+        # 400 like the pre-check does instead of a generic 500.
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A user with this email is already registered."
+        ) from None
     except Exception:
         db.rollback()
         # Driver errors can carry SQL parameters, DSNs or account details.

@@ -62,6 +62,43 @@ class AuthRouteTests(unittest.TestCase):
         self.assertEqual(self.db.query(Organization).count(), 1)
         self.assertEqual(self.db.query(User).count(), 1)
 
+    def test_short_password_is_rejected_with_422(self):
+        # The seed script already refuses admin passwords under 12
+        # characters; the public endpoint used to accept a 1-character
+        # password. 422, not a 500, and nothing is written.
+        result = self.client.post('/auth/register', json=self.payload(password='short'))
+        self.assertEqual(result.status_code, 422, result.text)
+        self.assertEqual(self.db.query(User).count(), 0)
+        self.assertEqual(self.db.query(Organization).count(), 0)
+
+    def test_twelve_character_password_is_accepted(self):
+        result = self.client.post('/auth/register', json=self.payload(password='twelve-chars'))
+        self.assertEqual(result.status_code, 201, result.text)
+
+    def test_blank_organization_name_is_rejected(self):
+        result = self.client.post('/auth/register', json=self.payload(organization_name='   '))
+        self.assertEqual(result.status_code, 422, result.text)
+        self.assertEqual(self.db.query(User).count(), 0)
+
+    def test_concurrent_duplicate_registration_returns_400_not_500(self):
+        # The pre-check and the commit are not atomic: two concurrent
+        # registrations can both pass the check, and the loser hits the
+        # unique constraint at commit. That is a duplicate, not a server
+        # failure — 400 with the same message as the pre-check.
+        from sqlalchemy.exc import IntegrityError
+        original_commit = self.db.commit
+        def failing_commit():
+            raise IntegrityError('INSERT', {}, Exception('UNIQUE constraint failed: users.email'))
+        self.db.commit = failing_commit
+        try:
+            result = self.client.post('/auth/register', json=self.payload(email='other@example.com'))
+        finally:
+            self.db.commit = original_commit
+        self.assertEqual(result.status_code, 400, result.text)
+        self.assertEqual(result.json()['detail'], 'A user with this email is already registered.')
+        self.db.rollback()
+        self.assertEqual(self.db.query(User).count(), 0)
+
     def test_registration_failure_stays_generic_in_response_and_logs(self):
         original_commit = self.db.commit
         def failing_commit():

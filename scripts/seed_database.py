@@ -148,15 +148,19 @@ def seed_db(argv=None, env=None):
 
         # 5. Add historical Scan Record
         scan_id = str(uuid.uuid4())
+        # Counts must agree with the rows below: 7 findings, 7 failed
+        # checks, 0 passed checks. (They previously read 3/3/12, so the
+        # scans page, the findings page and the compliance overview
+        # disagreed with each other about the same seeded scan.)
         history_scan = Scan(
             id=scan_id,
             organization_id=org_id,
             cloud_account_id=acc_id,
             status="COMPLETED",
             progress=100.0,
-            vulnerabilities_found=3,
-            failed_checks=3,
-            passed_checks=12,
+            vulnerabilities_found=7,
+            failed_checks=7,
+            passed_checks=0,
             created_at=utcnow() - datetime.timedelta(hours=2),
             completed_at=utcnow() - datetime.timedelta(hours=1.8)
         )

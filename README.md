@@ -357,9 +357,10 @@ npm run build
 Known state: the backend suite's one pre-existing failure,
 `test_readiness_reports_ready_with_a_working_database`, is FIXED in 1.0.1
 (the test harness evicted `sys.modules` entries mid-import; the fix keeps
-only the intended router swap). The suite is 162 passed, 0 failed with a
+only the intended router swap). The suite is 172 passed, 0 failed with a
 live PostgreSQL instance (149 in 1.0.2, plus 4 refresh-token tests and
-7 analysis-endpoint tests added in 1.0.3, plus 2 tests added in 1.0.4) —
+7 analysis-endpoint tests added in 1.0.3, plus 2 tests added in 1.0.4,
+plus 10 tests added in 1.0.5) —
 without a live database, that single readiness test still fails by design,
 since it tests readiness *with a working database*.
 Timestamps are naive UTC by design (all `DateTime` columns are
@@ -367,6 +368,42 @@ timezone-naive); `backend/app/utils/timestamps.py` is the single place that
 produces them, after the deprecated `datetime.utcnow()` was removed.
 
 ## Changelog
+
+### 1.0.5 (21 Nov 2026)
+- Patch release. **Premium UI pass + senior logic review.**
+- Logic: demo scans are finished scans now — `GET /compliance/summary`,
+  the pass-rate history behind the forecast, and the dashboard's
+  compliance score and trend chart all ignored `DEMO_COMPLETED` scans,
+  so after a demo scan (the main way the app is tried) the dashboard
+  showed empty states even though checks had been evaluated. All three
+  now count `COMPLETED` and `DEMO_COMPLETED`; failed scans still earn
+  nothing. Registration hardening: passwords must be at least 12
+  characters (the seed script's bar — the public endpoint used to accept
+  a one-character password) and a blank/whitespace-only organization
+  name is rejected with 422. A duplicate registration that loses a race
+  now returns 400 like the pre-check instead of a generic 500 (the
+  unique constraint is caught as `IntegrityError` at commit).
+- Logic: `GET /compliance/checks` and `GET /remediation/history` were
+  the last unbounded list endpoints — both now take the same `skip` /
+  `limit` (default 50, max 200) contract as the scan and finding lists.
+  `declarative_base` is imported from `sqlalchemy.orm`, clearing the
+  `MovedIn20Warning` the suite used to emit (suite warnings 8 → 2, both
+  third-party). The stale `CloudAccount.credentials` comment claiming
+  credentials are not encrypted is corrected — they are sealed AES-GCM
+  envelopes.
+- UI: the scan modal only offers *active* cloud accounts — inactive
+  ones used to appear as choices and then fail with 400 on submit — and
+  shows a hint when no active account exists. The dashboard's "finished
+  scans" wording replaces "completed scans" where demo scans now count,
+  and the trend chart's right margin is widened so the last date tick no
+  longer renders clipped. The seed script's scan counts now agree with
+  the rows it inserts (7 findings, 7 failed, 0 passed — they read 3/3/12
+  while inserting 7 findings and 7 failed checks, so the scans page,
+  findings page and compliance overview disagreed about one seeded scan).
+- Docker: backend build not retried — still environmentally blocked in
+  this VM (overlayfs mount error + Docker Hub EOF through the sandbox
+  egress proxy, never reaching any repo layer), as established in
+  round 7.
 
 ### 1.0.4 (21 Nov 2026)
 - Patch release. **Premium UI/UX pass + senior logic review.**

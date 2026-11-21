@@ -54,3 +54,12 @@ class DatabaseConfigurationTests(unittest.TestCase):
             text = (Path(__file__).parents[1] / name).read_text()
             self.assertIn('psycopg[binary]', text)
         import psycopg  # noqa: F401  (fails loudly if the dep is dropped)
+
+    def test_declarative_base_comes_from_sqlalchemy_orm(self):
+        """sqlalchemy.ext.declarative is removed in SQLAlchemy 2.0's
+        spirit: importing declarative_base from it emits a
+        MovedIn20Warning on every suite run. The orm spelling is the
+        supported one."""
+        source = (Path(__file__).parents[1] / 'app/config/database.py').read_text()
+        self.assertNotIn('sqlalchemy.ext.declarative', source)
+        self.assertIn('from sqlalchemy.orm import declarative_base', source)

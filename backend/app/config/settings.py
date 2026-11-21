@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "SecureFlow"
     DEBUG: bool = True
-    VERSION: str = "1.0.4"
+    VERSION: str = "1.0.5"
     
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/secureflow"

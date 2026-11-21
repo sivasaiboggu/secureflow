@@ -157,10 +157,12 @@ export const Dashboard: React.FC = () => {
       const low = countBySeverity('LOW');
       const totalVulns = summaryData ? summaryData.total_open_vulnerabilities : vulns.length;
 
-      // Real evaluated coverage only: weighted pass rate across completed scans
+      // Real evaluated coverage only: weighted pass rate across finished scans
       // that ran at least one check. Never a penalty formula or a default 100.
+      // Demo scans count — their checks were evaluated, and excluding them
+      // left this card and the trend chart empty after every demo scan.
       const evaluated = scans
-        .filter((s: any) => s.status === 'COMPLETED' && ((s.passed_checks || 0) + (s.failed_checks || 0)) > 0)
+        .filter((s: any) => (s.status === 'COMPLETED' || s.status === 'DEMO_COMPLETED') && ((s.passed_checks || 0) + (s.failed_checks || 0)) > 0)
         .sort((a: any, b: any) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime());
       let compliance: number | null = null;
       if (evaluated.length > 0) {
@@ -283,7 +285,7 @@ export const Dashboard: React.FC = () => {
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard label="Compliance Score" value={stats.complianceScore === null ? '—' : `${stats.complianceScore}%`} sub={stats.complianceScore === null ? 'No evaluated checks yet' : 'Pass rate across completed scans'} accent={complianceColor} />
+          <StatCard label="Compliance Score" value={stats.complianceScore === null ? '—' : `${stats.complianceScore}%`} sub={stats.complianceScore === null ? 'No evaluated checks yet' : 'Pass rate across finished scans'} accent={complianceColor} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard label="Critical Threats" value={stats.criticalCount} sub="Immediate action" accent="var(--sev-critical)" />
@@ -333,12 +335,14 @@ export const Dashboard: React.FC = () => {
             {trendData.length < 2 ? (
               <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.8px dashed var(--nexus-border-strong)', borderRadius: 10 }}>
                 <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'var(--nexus-text-faint)', letterSpacing: '0.06em', textAlign: 'center', padding: '0 24px' }}>
-                  Appears after at least two completed scans with evaluated checks.
+                  Appears after at least two finished scans with evaluated checks.
                 </p>
               </div>
             ) : (
             <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={trendData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+              {/* Right margin 30, not 8: the last date tick label ran past
+                  the chart edge and rendered clipped ("11/21/202"). */}
+              <AreaChart data={trendData} margin={{ top: 4, right: 30, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="complianceGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--nexus-accent-bar)" stopOpacity={0.25} />
@@ -395,7 +399,7 @@ export const Dashboard: React.FC = () => {
             {(!compliance || Object.keys(compliance).length === 0) ? (
               <div style={{ minHeight: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.8px dashed var(--nexus-border-strong)', borderRadius: 10 }}>
                 <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'var(--nexus-text-faint)', letterSpacing: '0.06em', textAlign: 'center', padding: '0 24px' }}>
-                  No framework has evaluated checks yet. Scores appear after a completed scan.
+                  No framework has evaluated checks yet. Scores appear after a finished scan.
                 </p>
               </div>
             ) : (

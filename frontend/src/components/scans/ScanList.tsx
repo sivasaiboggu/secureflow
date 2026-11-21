@@ -18,6 +18,7 @@ interface CloudAccount {
   id: string;
   name: string;
   provider: string;
+  is_active: boolean;
 }
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
@@ -208,15 +209,24 @@ export const ScanList: React.FC = () => {
               id="scan-account-select"
               value={selectedAccount}
               onChange={(e) => setSelectedAccount(e.target.value)}
-              style={{ width: '100%', background: 'var(--nexus-input-bg)', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: '"Geist", sans-serif', color: 'var(--nexus-text-primary)', outline: 'none', marginBottom: 28, cursor: 'pointer' }}
+              style={{ width: '100%', background: 'var(--nexus-input-bg)', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: '"Geist", sans-serif', color: 'var(--nexus-text-primary)', outline: 'none', marginBottom: 8, cursor: 'pointer' }}
             >
               <option value="" style={{ background: 'var(--nexus-surface-solid)' }}>Select account...</option>
-              {accounts.map((acc) => (
+              {/* Inactive accounts cannot be scanned — the API rejects them
+                  with 400 — so they must never appear as choices here.
+                  The settings page lists them; this modal lists only the
+                  accounts a scan can actually run against. */}
+              {accounts.filter((acc) => acc.is_active).map((acc) => (
                 <option key={acc.id} value={acc.id} style={{ background: 'var(--nexus-surface-solid)' }}>
                   {acc.name} - {acc.provider.toUpperCase()}
                 </option>
               ))}
             </select>
+            {accounts.every((acc) => !acc.is_active) && (
+              <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.06em', color: 'var(--sev-medium)', margin: '0 0 20px', lineHeight: 1.6 }}>
+                No active cloud account — register one in Settings → Cloud Accounts before scanning.
+              </p>
+            )}
 
             <div style={{ display: 'flex', gap: 12 }}>
               <button

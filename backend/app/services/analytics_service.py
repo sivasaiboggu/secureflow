@@ -42,10 +42,15 @@ class AnalyticsService:
         }
 
     def get_scan_pass_rates(self, db: Session, org_id: str) -> List[Dict[str, Any]]:
-        """Real per-scan pass rates from completed scans that evaluated at least one check."""
+        """Real per-scan pass rates from finished scans that evaluated at least one check.
+
+        Demo scans count: their checks were evaluated and their pass rate
+        is real data. Excluding DEMO_COMPLETED left the forecast with no
+        history after demo-only use, even though finished scans existed.
+        """
         scans = db.query(Scan).filter(
             Scan.organization_id == org_id,
-            Scan.status == "COMPLETED"
+            Scan.status.in_(["COMPLETED", "DEMO_COMPLETED"])
         ).order_by(Scan.completed_at.asc()).all()
         points = []
         for s in scans:
