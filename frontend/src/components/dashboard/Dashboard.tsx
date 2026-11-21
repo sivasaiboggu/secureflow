@@ -305,12 +305,16 @@ export const Dashboard: React.FC = () => {
               </div>
             ) : (
             <ResponsiveContainer width="100%" height={260}>
+              {/* Charts render without entry animation: on a theme toggle
+                  recharts re-mounts, and the 1.5s grow-in left the chart
+                  visibly empty for seconds. Instant rendering also reads
+                  as more deliberate on a security console. */}
               <BarChart data={severityData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 4" stroke="var(--nexus-border-soft)" />
                 <XAxis dataKey="name" tick={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, fill: 'var(--nexus-text-muted)', letterSpacing: '0.1em' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, fill: 'var(--nexus-text-faint)' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(231,255,114,0.04)' }} />
-                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} isAnimationActive={false}>
                   {severityData.map((entry) => (
                     <Cell key={entry.name} fill={entry.fill} />
                   ))}
@@ -345,7 +349,7 @@ export const Dashboard: React.FC = () => {
                 <XAxis dataKey="date" tick={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, fill: 'var(--nexus-text-muted)' }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} tick={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, fill: 'var(--nexus-text-faint)' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="score" stroke="var(--nexus-accent-bar)" strokeWidth={2} fill="url(#complianceGrad)" dot={{ fill: 'var(--nexus-accent-bar)', r: 4, strokeWidth: 0 }} />
+                <Area type="monotone" dataKey="score" stroke="var(--nexus-accent-bar)" strokeWidth={2} fill="url(#complianceGrad)" isAnimationActive={false} dot={{ fill: 'var(--nexus-accent-bar)', r: 4, strokeWidth: 0 }} />
               </AreaChart>
             </ResponsiveContainer>
             )}

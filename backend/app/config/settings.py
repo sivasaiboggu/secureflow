@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import model_validator
 from typing import List, Optional
 from functools import lru_cache
@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "SecureFlow"
     DEBUG: bool = True
-    VERSION: str = "1.0.3"
+    VERSION: str = "1.0.4"
     
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/secureflow"
@@ -84,9 +84,9 @@ class Settings(BaseSettings):
                 )
         return self
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    # Class-based `config` is deprecated in Pydantic v2 (and removed in
+    # v3): SettingsConfigDict is the supported spelling.
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 @lru_cache()
 def get_settings() -> Settings:

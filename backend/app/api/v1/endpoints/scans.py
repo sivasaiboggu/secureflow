@@ -51,6 +51,13 @@ def register_cloud_account(payload: CloudAccountCreate, db: Session = Depends(ge
     # a human picking one in the scan modal. Leading/trailing spaces are
     # ignored for the same reason, and never stored.
     account_name = payload.name.strip()
+    # A whitespace-only name previously slipped through as "" and a name
+    # longer than the 100-char column failed at commit time as a 500.
+    # Both are client errors; reject them before any write.
+    if not account_name:
+        raise HTTPException(status_code=400, detail="Cloud account name must not be blank.")
+    if len(account_name) > 100:
+        raise HTTPException(status_code=400, detail="Cloud account name must be 100 characters or fewer.")
     dup = db.query(CloudAccount).filter(
         func.lower(CloudAccount.name) == account_name.lower(),
         CloudAccount.organization_id == current_user.organization_id

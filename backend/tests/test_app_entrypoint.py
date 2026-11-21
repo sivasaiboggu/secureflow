@@ -40,6 +40,16 @@ def load_main():
     return module
 
 class EntrypointTests(unittest.TestCase):
+    def test_app_version_matches_settings(self):
+        # The FastAPI version is read from settings, not a second hardcoded
+        # literal: a bump in one place must never leave the docs showing
+        # the old version.
+        from app.config.settings import settings
+        module = load_main()
+        self.assertEqual(module.app.version, settings.VERSION)
+        client = TestClient(module.app)
+        client.close()
+
     def test_readiness_reports_ready_with_a_working_database(self):
         module = load_main()
         client = TestClient(module.app)

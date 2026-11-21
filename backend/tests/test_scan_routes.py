@@ -37,6 +37,14 @@ class ScanRouteTests(unittest.TestCase):
         self.assertEqual(result.status_code,200,result.text)
         self.assertNotIn('credentials',result.json())
         self.assertEqual(self.db.query(CloudAccount).one().credentials,{'scan_mode':'demo'})
+    def test_blank_or_overlong_account_name_rejected_before_any_write(self):
+        # A whitespace-only name used to be stored as "" and a name over the
+        # 100-char column failed at commit time as a 500. Both are 400s now.
+        for name in ['   ', 'x' * 101]:
+            result=self.client.post('/scans/cloud-accounts',json={'name':name,'provider':'aws','credentials':{'scan_mode':'demo'}})
+            self.assertEqual(result.status_code,400,result.text)
+        self.assertEqual(self.db.query(CloudAccount).count(),0)
+
     def test_real_missing_keys_and_unsupported_provider_rejected(self):
         for provider,credentials in [('aws',{}),('azure',{'scan_mode':'demo'}),('aws',{'scan_mode':'unknown'})]:
             result=self.client.post('/scans/cloud-accounts',json={'name':'Rejected','provider':provider,'credentials':credentials})

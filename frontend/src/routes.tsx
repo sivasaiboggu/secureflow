@@ -33,7 +33,10 @@ export const AppRoutes = () => {
         <Route path="/settings/accounts" element={<ProtectedRoute><CloudAccounts /></ProtectedRoute>} />
         <Route path="/settings/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
         <Route path="/settings/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* Unknown paths go to the dashboard for a signed-in user, not the
+            login form: sending an authenticated user to /login showed them
+            a sign-in screen while holding a valid session. */}
+        <Route path="*" element={isAuthenticated() ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
       </Routes>
     </Suspense>
   );

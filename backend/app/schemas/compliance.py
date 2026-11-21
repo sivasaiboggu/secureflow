@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Dict, Any, Optional
 from datetime import datetime
 
@@ -13,5 +13,4 @@ class ComplianceCheckResponse(BaseModel):
     evidence: Optional[Dict[str, Any]] = None
     checked_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

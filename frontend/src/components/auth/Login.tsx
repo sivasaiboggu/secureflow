@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 
@@ -8,6 +8,13 @@ export const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // A valid session already exists: never show the sign-in form to a
+  // signed-in user (an expired token is cleared by the API interceptor
+  // on the first failed refresh, so this cannot loop).
+  useEffect(() => {
+    if (localStorage.getItem('token')) navigate('/dashboard', { replace: true });
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,7 +115,7 @@ export const Login: React.FC = () => {
 
             <form onSubmit={handleLogin} style={styles.form}>
               <div style={styles.fieldGroup}>
-                <label style={styles.fieldLabel}>EMAIL ADDRESS</label>
+                <label htmlFor="login-email" style={styles.fieldLabel}>EMAIL ADDRESS</label>
                 <input
                   id="login-email"
                   type="email"
@@ -123,7 +130,7 @@ export const Login: React.FC = () => {
               </div>
 
               <div style={styles.fieldGroup}>
-                <label style={styles.fieldLabel}>PASSWORD</label>
+                <label htmlFor="login-password" style={styles.fieldLabel}>PASSWORD</label>
                 <input
                   id="login-password"
                   type="password"

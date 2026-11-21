@@ -357,16 +357,48 @@ npm run build
 Known state: the backend suite's one pre-existing failure,
 `test_readiness_reports_ready_with_a_working_database`, is FIXED in 1.0.1
 (the test harness evicted `sys.modules` entries mid-import; the fix keeps
-only the intended router swap). The suite is 160 passed, 0 failed with a
+only the intended router swap). The suite is 162 passed, 0 failed with a
 live PostgreSQL instance (149 in 1.0.2, plus 4 refresh-token tests and
-7 analysis-endpoint tests added in 1.0.3) — without a live database,
-that single readiness test still fails by design, since it tests readiness
-*with a working database*.
+7 analysis-endpoint tests added in 1.0.3, plus 2 tests added in 1.0.4) —
+without a live database, that single readiness test still fails by design,
+since it tests readiness *with a working database*.
 Timestamps are naive UTC by design (all `DateTime` columns are
 timezone-naive); `backend/app/utils/timestamps.py` is the single place that
 produces them, after the deprecated `datetime.utcnow()` was removed.
 
 ## Changelog
+
+### 1.0.4 (21 Nov 2026)
+- Patch release. **Premium UI/UX pass + senior logic review.**
+- UI: signed-in users are never shown the login form again — `/login`
+  redirects to the dashboard when a token exists, and unknown routes send
+  signed-in users to the dashboard instead of `/login`. Login labels are
+  wired to their inputs and the scan-modal account select has a labelled
+  control (screen-reader/keyboard polish). Removed dead code: the
+  orphaned `frontend/src/components/common/{Layout,Sidebar,Header}.tsx`
+  (nothing imported them; `App.tsx` ships its own navigation header) —
+  deleted with a real `git rm`, so the next push removes them from the
+  remote too.
+- UI (from a real headless render of the live app): the finding drawer
+  slid *under* the sticky navigation header (z-index 61 vs 100), so its
+  title was clipped — overlay and drawer now sit at 200/201. Dashboard
+  charts no longer animate in: on a theme toggle recharts re-mounted and
+  the 1.5s grow-in left the severity chart visibly empty for seconds;
+  bars and trend now render instantly.
+- Logic: the FastAPI app version is now read from `settings.VERSION`
+  (single source of truth, pinned by a test) instead of a second hardcoded
+  literal. Cloud-account registration rejects blank/whitespace-only names
+  and names over the 100-char column as 400s — the first used to be stored
+  as `""`, the second failed at commit time as a 500. All seven Pydantic
+  `class Config` blocks migrate to `model_config = ConfigDict(...)` /
+  `SettingsConfigDict` (six schemas plus `Settings` itself), clearing the
+  Pydantic v2 deprecation warnings the suite used to emit (v3 will remove
+  class-based config).
+  Round-6 fixes re-verified still holding: `POST /auth/refresh`,
+  authenticated analysis endpoints, 400s for bad payloads, logout keeping
+  theme/notification preferences.
+- Docker: backend build retried in this VM — still fails, environmental,
+  not a repo problem (see below).
 
 ### 1.0.3 (21 Nov 2026)
 - Patch release. **Premium UI pass + senior logic review.**

@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SecureFlow API",
     description="Cloud security posture research prototype: AWS listing/check workflows, explicit sample-data demos, and review-only remediation plans.",
-    version="1.0.3",
+    version=settings.VERSION,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",

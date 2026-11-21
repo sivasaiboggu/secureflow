@@ -203,8 +203,9 @@ export const ScanList: React.FC = () => {
             <h2 style={{ fontFamily: '"Geist", sans-serif', fontSize: 22, fontWeight: 500, letterSpacing: '-0.03em', color: 'var(--nexus-text-primary)', marginBottom: 6 }}>Start Cloud Scan</h2>
             <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'var(--nexus-text-muted)', letterSpacing: '0.1em', marginBottom: 28 }}>SELECT TARGET CLOUD ACCOUNT</p>
 
-            <label style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase' as const, color: 'var(--nexus-text-muted)', display: 'block', marginBottom: 8 }}>Cloud Account</label>
+            <label htmlFor="scan-account-select" style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase' as const, color: 'var(--nexus-text-muted)', display: 'block', marginBottom: 8 }}>Cloud Account</label>
             <select
+              id="scan-account-select"
               value={selectedAccount}
               onChange={(e) => setSelectedAccount(e.target.value)}
               style={{ width: '100%', background: 'var(--nexus-input-bg)', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: '"Geist", sans-serif', color: 'var(--nexus-text-primary)', outline: 'none', marginBottom: 28, cursor: 'pointer' }}
