@@ -5,6 +5,7 @@ import { LayoutDashboard, ScanSearch, ShieldAlert, BarChart3, Cloud, Users, Bell
 import { AppRoutes } from './routes';
 import { WebGLBackground } from './components/common/WebGLBackground';
 import { ApiUnavailableBanner } from './components/common/ApiUnavailableBanner';
+import { clearAuthKeys } from './services/api';
 import { NexusThemeProvider, useNexusTheme } from './theme/ThemeContext';
 import { ToastProvider } from './components/common/ToastContext';
 import './index.css';
@@ -27,7 +28,9 @@ const NavigationHeader: React.FC = () => {
   const hasToken = !!localStorage.getItem('token');
   if (location.pathname === '/login' || !hasToken) return null;
 
-  const handleLogout = () => { localStorage.clear(); navigate('/login'); };
+  // Sign out removes auth keys only. Theme and notification preferences
+  // share localStorage and must survive signing out.
+  const handleLogout = () => { clearAuthKeys(); navigate('/login'); };
 
   return (
     <header className="portfolio-nav" style={navStyles.header}>
@@ -45,7 +48,7 @@ const NavigationHeader: React.FC = () => {
         {NAV_ITEMS.map(({ label, path, Icon }) => {
           const active = location.pathname === path || location.pathname.startsWith(path + '/');
           return (
-            <Link key={path} to={path} style={{ textDecoration: 'none' }}>
+            <Link key={path} to={path} style={{ textDecoration: 'none' }} aria-current={active ? 'page' : undefined}>
               <span style={{ ...navStyles.navLink, ...(active ? navStyles.navLinkActive : {}) }}>
                 <Icon size={14} strokeWidth={2} style={{ verticalAlign: '-2px', marginRight: 6 }} />
                 {label}

@@ -12,6 +12,9 @@ from app.schemas.vulnerability import (
 from app.services.scan_service import scan_service
 from app.services.ml_service import ml_service
 
+VALID_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW"}
+VALID_VULNERABILITY_STATUSES = {"OPEN", "IN_PROGRESS", "REMEDIATED", "IGNORED"}
+
 router = APIRouter()
 
 @router.get("", response_model=List[VulnerabilityResponse])
@@ -24,6 +27,21 @@ def get_vulnerabilities(
     current_user: User = Depends(get_current_user)
 ):
     """Fetches list of active vulnerabilities and cloud findings, supporting severity filters"""
+    # An unknown severity or status previously filtered everything out and
+    # returned an empty list, which looked identical to "no findings".
+    # Reject it so a typo or a stale client value is visible immediately.
+    # (Literal 400: the `status` query parameter shadows the imported
+    # fastapi.status module inside this function.)
+    if severity is not None and severity.upper() not in VALID_SEVERITIES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid severity. Must be one of: {', '.join(sorted(VALID_SEVERITIES))}.",
+        )
+    if status is not None and status.upper() not in VALID_VULNERABILITY_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status. Must be one of: {', '.join(sorted(VALID_VULNERABILITY_STATUSES))}.",
+        )
     vulnerabilities = scan_service.list_vulnerabilities(
         db, current_user.organization_id, severity, status, skip, limit
     )
@@ -59,13 +77,22 @@ def trigger_automated_remediation(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="The remediation plan could not be saved. Review the finding and try again.") from None
 
 @router.post("/analyze-log")
-def classify_text_log(payload: LogAnalysisRequest):
+def classify_text_log(payload: LogAnalysisRequest, current_user: User = Depends(get_current_user)):
     """Heuristic CloudTrail log review. An optional local model requires separate validation; not verified threat detection."""
-    result = ml_service.scan_log_for_threats(payload.log_payload)
+    try:
+        result = ml_service.scan_log_for_threats(payload.log_payload)
+    except ValueError as e:
+        # A malformed payload is a client error, not a server failure.
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     return result
 
 @router.post("/analyze-metrics")
-def detect_metric_anomaly(payload: MetricAnalysisRequest):
+def detect_metric_anomaly(payload: MetricAnalysisRequest, current_user: User = Depends(get_current_user)):
     """Reviews eight API metrics with a local autoencoder when reviewed artifacts are loaded; otherwise reports the detector as unavailable."""
-    result = ml_service.analyze_api_logs(payload.metrics)
+    try:
+        result = ml_service.analyze_api_logs(payload.metrics)
+    except ValueError as e:
+        # Wrong count or non-finite values are client errors, not server
+        # failures: previously this surfaced as a bare 500.
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     return result

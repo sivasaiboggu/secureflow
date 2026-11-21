@@ -96,9 +96,6 @@ class ScanService:
                              .order_by(Scan.created_at.desc())\
                              .offset(skip).limit(limit).all()
 
-    def get_scan_vulnerabilities(self, db: Session, scan_id: str) -> List[Vulnerability]:
-        return db.query(Vulnerability).filter(Vulnerability.scan_id == scan_id).all()
-
     def list_vulnerabilities(self, db: Session, organization_id: str, severity: Optional[str] = None, 
                              status: Optional[str] = None, skip: int = 0, limit: int = 50) -> List[Vulnerability]:
         query = db.query(Vulnerability).join(Scan).filter(Scan.organization_id == organization_id)
@@ -120,6 +117,15 @@ class ScanService:
             
         if not vuln.terraform_fix or not vuln.terraform_fix.strip():
             raise ValueError('No Terraform template is available for review.')
+
+        # Saving the same plan twice used to create a duplicate row. A plan
+        # is review-only and identical each time, so return the pending one.
+        existing = db.query(Remediation).filter(
+            Remediation.vulnerability_id == vulnerability_id,
+            Remediation.status == "PENDING",
+        ).first()
+        if existing:
+            return existing
 
         # Save a plan for review; this service does not execute Terraform.
         rem_id = str(uuid.uuid4())

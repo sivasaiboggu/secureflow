@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List
 import uuid
@@ -45,9 +46,13 @@ def register_cloud_account(payload: CloudAccountCreate, db: Session = Depends(ge
         raise HTTPException(status_code=400, detail="Scan mode must be real or demo.")
     if mode == "real" and not (payload.credentials.get("aws_access_key_id") and payload.credentials.get("aws_secret_access_key")):
         raise HTTPException(status_code=400, detail="AWS credentials are required unless demo mode is selected.")
-    # Check if duplicate name
+    # Check if duplicate name. The comparison is case-insensitive: account
+    # names are display names, and "Prod" vs "prod" are the same account to
+    # a human picking one in the scan modal. Leading/trailing spaces are
+    # ignored for the same reason, and never stored.
+    account_name = payload.name.strip()
     dup = db.query(CloudAccount).filter(
-        CloudAccount.name == payload.name,
+        func.lower(CloudAccount.name) == account_name.lower(),
         CloudAccount.organization_id == current_user.organization_id
     ).first()
     if dup:
@@ -60,7 +65,7 @@ def register_cloud_account(payload: CloudAccountCreate, db: Session = Depends(ge
         raise HTTPException(status_code=503, detail=str(error)) from None
     account = CloudAccount(
         id=account_id,
-        name=payload.name,
+        name=account_name,
         provider=payload.provider.lower(),
         organization_id=current_user.organization_id,
         credentials=stored_credentials,

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from jose import jwt, JWTError
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 import uuid
@@ -7,9 +8,10 @@ import logging
 from datetime import datetime
 
 from app.config.database import get_db
+from app.config.settings import settings
 from app.database.models import User, Organization
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token
-from app.schemas.user import UserCreate, UserResponse, Token
+from app.schemas.user import UserCreate, UserResponse, Token, RefreshRequest
 
 logger = logging.getLogger(__name__)
 
@@ -104,10 +106,46 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
         
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
-    
+
     return Token(
         access_token=access_token,
         token_type="bearer",
         refresh_token=refresh_token,
+        user=UserResponse.model_validate(user)
+    )
+
+@router.post("/refresh", response_model=Token)
+def refresh_access_token(payload: RefreshRequest, db: Session = Depends(get_db)):
+    """Exchanges a refresh token for a new short-lived access token.
+
+    Refresh tokens are minted at login/register but previously had no
+    exchange endpoint, so every session silently died after 30 minutes and
+    the user had to sign in again. Only tokens carrying type "refresh" are
+    accepted here; an access token (or a token without a type) is rejected,
+    mirroring the rule in get_current_user. The refresh token itself is
+    stateless and is returned unchanged — rotation would need server-side
+    storage, which this app does not have.
+    """
+    try:
+        token_payload = jwt.decode(payload.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: str = token_payload.get("sub")
+        if user_id is None or token_payload.get("type") != "refresh":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token.")
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token.")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token.")
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User account is deactivated."
+        )
+
+    return Token(
+        access_token=create_access_token(user.id),
+        token_type="bearer",
+        refresh_token=payload.refresh_token,
         user=UserResponse.model_validate(user)
     )

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Paper, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Box, Button, CircularProgress, Alert } from '@mui/material';
+import { Container, Paper, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Box, CircularProgress, Alert } from '@mui/material';
 import { api } from '../../services/api';
 
 interface OrgUser {
@@ -33,7 +33,6 @@ export const UserManagement: React.FC = () => {
     <Container maxWidth="xl" sx={{ mt: 4 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h5" fontWeight="bold">Organization User Directory</Typography>
-        <Button variant="contained" disabled title="Invitations are not available yet">Invite Member</Button>
       </Box>
 
       {error && <Alert severity="warning" sx={{ mb: 2 }}>{error}</Alert>}

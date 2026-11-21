@@ -66,6 +66,59 @@ export const buildNexusTheme = (mode: NexusMode): Theme => {
             color: '#080b12',
             '&:hover': { background: '#d4ec5a', boxShadow: '0 8px 24px rgba(231,255,114,0.3)' },
           },
+          disabled: {
+            opacity: 0.45,
+          },
+        },
+      },
+      MuiSwitch: {
+        styleOverrides: {
+          root: { padding: 8 },
+          track: {
+            backgroundColor: 'var(--nexus-elevated-bg)',
+            border: '0.8px solid var(--nexus-border-strong)',
+            borderRadius: 12,
+            opacity: 1,
+          },
+          thumb: { backgroundColor: 'var(--nexus-text-muted)' },
+          switchBase: {
+            '&.Mui-checked': {
+              color: '#080b12',
+              '& + .MuiSwitch-track': { backgroundColor: '#E7FF72', borderColor: '#E7FF72', opacity: 1 },
+              '& .MuiSwitch-thumb': { backgroundColor: '#080b12' },
+            },
+          },
+        },
+      },
+      MuiAlert: {
+        styleOverrides: {
+          root: {
+            borderRadius: 10,
+            fontFamily: '"Geist", sans-serif',
+            border: '0.8px solid var(--nexus-border)',
+            backgroundColor: 'var(--nexus-surface)',
+            backdropFilter: 'blur(24px)',
+          },
+        },
+      },
+      MuiTableRow: {
+        styleOverrides: {
+          root: {
+            '&:hover': { backgroundColor: 'rgba(231,255,114,0.04)' },
+          },
+        },
+      },
+      MuiTooltip: {
+        styleOverrides: {
+          tooltip: {
+            backgroundColor: 'var(--nexus-surface-strong)',
+            color: 'var(--nexus-text-primary)',
+            border: '0.8px solid var(--nexus-border-strong)',
+            borderRadius: 8,
+            fontFamily: '"Geist Mono", monospace',
+            fontSize: 11,
+            letterSpacing: '0.04em',
+          },
         },
       },
       MuiTableCell: {

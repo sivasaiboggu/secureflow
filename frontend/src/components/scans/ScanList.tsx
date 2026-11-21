@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CircularProgress, Box } from '@mui/material';
-import { Plus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, ScanSearch } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../common/ToastContext';
 
@@ -32,16 +33,17 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   };
   const s = map[status] || { bg: 'var(--nexus-elevated-bg)', color: 'var(--nexus-text-muted)', border: 'var(--nexus-border-strong)' };
   return (
-    <span style={{ background: s.bg, color: s.color, border: `0.8px solid ${s.border}`, borderRadius: 6, padding: '2px 8px', fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.1em', fontWeight: 600 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: s.bg, color: s.color, border: `0.8px solid ${s.border}`, borderRadius: 6, padding: '2px 8px', fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.1em', fontWeight: 600 }}>
+      {status === 'RUNNING' && <span className="nexus-live-dot" aria-hidden="true" />}
       {status}
     </span>
   );
 };
 
-const ProgressBar: React.FC<{ value: number }> = ({ value }) => (
+const ProgressBar: React.FC<{ value: number; active?: boolean }> = ({ value, active = false }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-    <div style={{ flex: 1, height: 4, background: 'var(--nexus-elevated-bg)', borderRadius: 4, overflow: 'hidden' }}>
-      <div style={{ height: '100%', width: `${value}%`, background: value === 100 ? '#E7FF72' : '#06B6D4', borderRadius: 4, transition: 'width 500ms ease' }} />
+    <div style={{ flex: 1, height: 6, background: 'var(--nexus-elevated-bg)', borderRadius: 4, overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.25)' }}>
+      <div className={active ? 'nexus-progress-active' : undefined} style={{ height: '100%', width: `${value}%`, background: value === 100 ? '#E7FF72' : '#06B6D4', borderRadius: 4, transition: 'width 500ms ease' }} />
     </div>
     <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'var(--nexus-text-muted)', minWidth: 32 }}>{Math.round(value)}%</span>
   </div>
@@ -147,14 +149,14 @@ export const ScanList: React.FC = () => {
           <tbody>
             {scans.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: '48px', textAlign: 'center' as const, fontFamily: '"Geist Mono", monospace', fontSize: 11, letterSpacing: '0.14em', color: 'var(--nexus-text-dim)', textTransform: 'uppercase' as const }}>
-                  No scans found - trigger your first scan to begin posture analysis
+                <td colSpan={6} style={{ padding: '56px 24px', textAlign: 'center' as const }}>
+                  <ScanSearch size={24} color="var(--nexus-text-faint)" style={{ marginBottom: 12 }} />
+                  <p style={{ fontFamily: '"Geist", sans-serif', fontSize: 15, fontWeight: 500, color: 'var(--nexus-text-primary)', margin: '0 0 6px' }}>No scans yet</p>
+                  <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, letterSpacing: '0.08em', color: 'var(--nexus-text-muted)', margin: 0 }}>Trigger your first scan to begin posture analysis</p>
                 </td>
               </tr>
             ) : scans.map((scan) => (
-              <tr key={scan.id} style={{ borderBottom: '0.8px solid var(--nexus-border-soft)', transition: 'background 150ms ease' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(231,255,114,0.03)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              <tr key={scan.id} className="nexus-row" style={{ borderBottom: '0.8px solid var(--nexus-border-soft)' }}
               >
                 <td style={{ padding: '16px 20px', fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'var(--nexus-text-secondary)' }}>
                   {scan.id.substring(0, 12)}…
@@ -166,7 +168,7 @@ export const ScanList: React.FC = () => {
                   <StatusBadge status={scan.status} />
                 </td>
                 <td style={{ padding: '16px 20px', minWidth: 160 }}>
-                  <ProgressBar value={scan.progress} />
+                  <ProgressBar value={scan.progress} active={scan.status === 'RUNNING'} />
                 </td>
                 <td style={{ padding: '16px 20px' }}>
                   <span style={{ fontFamily: '"Geist", sans-serif', fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', color: scan.vulnerabilities_found > 0 ? 'var(--sev-high)' : 'var(--sev-low)' }}>
@@ -183,13 +185,18 @@ export const ScanList: React.FC = () => {
       </div>
 
       {/* Modal */}
+      <AnimatePresence>
       {showModal && (
-        <div
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
           onClick={() => setShowModal(false)}
           style={{ position: 'fixed', inset: 0, background: 'var(--nexus-overlay)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <div
+          <motion.div
             role="dialog" aria-modal="true" aria-label="Start cloud scan"
+            initial={{ opacity: 0, scale: 0.96, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 6 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 380 }}
             onClick={(e) => e.stopPropagation()}
             style={{ background: 'var(--nexus-surface-strong)', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 16, padding: 24, width: 400, maxWidth: 'calc(100vw - 28px)', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'rgba(0,0,0,0.6) 0px 24px 80px' }}
           >
@@ -225,9 +232,10 @@ export const ScanList: React.FC = () => {
                 {loading ? 'Launching...' : 'Execute'}
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 };

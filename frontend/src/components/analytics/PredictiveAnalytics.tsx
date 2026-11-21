@@ -61,6 +61,22 @@ export const PredictiveAnalytics: React.FC = () => {
       );
     }
 
+    // No trained anomaly artifacts are loaded, so the API answers
+    // is_anomaly: null with method "unavailable". Render that honestly
+    // instead of an empty score and an "undefined" algorithm label.
+    if (data.method === 'unavailable' || data.is_anomaly === null || data.is_anomaly === undefined) {
+      return (
+        <div style={{ background: 'var(--nexus-elevated-bg)', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 10, padding: '18px 20px' }}>
+          <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.22em', color: 'var(--nexus-text-muted)', marginBottom: 8 }}>
+            DETECTOR UNAVAILABLE
+          </p>
+          <p style={{ fontFamily: '"Geist", sans-serif', fontSize: 14, lineHeight: 1.6, color: 'var(--nexus-text-body)', margin: 0 }}>
+            {data.error || 'No local anomaly model is available. No assessment was performed.'}
+          </p>
+        </div>
+      );
+    }
+
     const isAnomaly = data.is_anomaly;
     return (
       <div style={{ background: isAnomaly ? 'rgba(251,191,36,0.1)' : 'rgba(74,222,128,0.1)', border: `0.8px solid ${isAnomaly ? 'rgba(251,191,36,0.3)' : 'rgba(74,222,128,0.3)'}`, borderRadius: 10, padding: '18px 20px' }}>

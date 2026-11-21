@@ -53,6 +53,9 @@ const monoLabel: React.CSSProperties = {
 const StatCard: React.FC<{ label: string; value: string | number; sub?: string; accent?: string }> = ({ label, value, sub, accent = 'var(--nexus-accent-text)' }) => (
   <motion.div
     variants={itemVariants}
+    whileHover={{ y: -2 }}
+    transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+    className="nexus-lift"
     style={{
       ...glassPanel,
       padding: '24px',
@@ -79,7 +82,7 @@ const StatCard: React.FC<{ label: string; value: string | number; sub?: string; 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload?.length) {
     return (
-      <div style={{ background: 'var(--nexus-surface-strong)', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 8, padding: '8px 12px' }}>
+      <div style={{ background: 'var(--nexus-surface-strong)', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 8, padding: '8px 12px', boxShadow: 'var(--nexus-shadow)' }}>
         <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'var(--nexus-text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</p>
         <p style={{ fontFamily: '"Geist", sans-serif', fontSize: 18, fontWeight: 600, color: 'var(--nexus-accent-text)', margin: 0 }}>{payload[0].value}</p>
       </div>
@@ -360,7 +363,7 @@ export const Dashboard: React.FC = () => {
             { label: 'MEDIUM', count: stats.mediumCount, color: 'var(--sev-medium)', bg: 'rgba(234,179,8,0.1)' },
             { label: 'LOW', count: stats.lowCount, color: 'var(--sev-low)', bg: 'rgba(34,197,94,0.1)' },
           ].map((item) => (
-            <div key={item.label} style={{ background: item.bg, border: `0.8px solid color-mix(in srgb, ${item.color} 35%, transparent)`, borderRadius: 10, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div key={item.label} className="nexus-lift" style={{ background: item.bg, border: `0.8px solid color-mix(in srgb, ${item.color} 35%, transparent)`, borderRadius: 10, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.14em', color: item.color }}>{item.label}</span>
               <span style={{ fontFamily: '"Geist", sans-serif', fontSize: 28, fontWeight: 600, letterSpacing: '-0.03em', color: item.color }}>{item.count}</span>
             </div>
@@ -402,7 +405,7 @@ export const Dashboard: React.FC = () => {
                         <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, letterSpacing: '0.12em', color: 'var(--nexus-text-secondary)' }}>{fw.split('_').join(' ')}</span>
                         <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, fontWeight: 700, color: barColor }}>{score.toFixed(0)}%</span>
                       </div>
-                      <div style={{ height: 8, borderRadius: 4, background: 'var(--nexus-elevated-bg)', overflow: 'hidden' }}>
+                      <div style={{ height: 8, borderRadius: 4, background: 'var(--nexus-elevated-bg)', overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.25)' }}>
                         <motion.div initial={{ width: 0 }} animate={{ width: `${score}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} style={{ height: '100%', borderRadius: 4, background: barColor }} />
                       </div>
                     </div>
@@ -418,7 +421,7 @@ export const Dashboard: React.FC = () => {
                 <p style={{ ...monoLabel, marginBottom: 6 }}>ACT NOW</p>
                 <h3 style={{ fontFamily: '"Geist", sans-serif', fontSize: 18, fontWeight: 500, letterSpacing: '-0.03em', color: 'var(--nexus-text-primary)', margin: 0 }}>Top Critical Findings</h3>
               </div>
-              <Link to="/vulnerabilities" style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.12em', color: 'var(--nexus-accent-text)', textDecoration: 'none' }}>VIEW ALL →</Link>
+              <Link to="/vulnerabilities" style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.12em', color: 'var(--nexus-accent-text)', textDecoration: 'none', borderBottom: '0.8px solid transparent', paddingBottom: 2 }} onMouseEnter={(e) => { e.currentTarget.style.borderBottomColor = 'var(--nexus-accent-text)'; }} onMouseLeave={(e) => { e.currentTarget.style.borderBottomColor = 'transparent'; }}>VIEW ALL →</Link>
             </div>
             {topFindings.length === 0 ? (
               <div style={{ minHeight: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0.8px dashed var(--nexus-border-strong)', borderRadius: 10 }}>
@@ -428,7 +431,7 @@ export const Dashboard: React.FC = () => {
               </div>
             ) : (
               topFindings.map((v: any) => (
-                <Link key={v.id} to="/vulnerabilities" style={{ textDecoration: 'none', display: 'block', padding: '12px 0', borderBottom: '0.8px solid var(--nexus-border-soft)' }}>
+                <Link key={v.id} to="/vulnerabilities" className="nexus-row" style={{ textDecoration: 'none', display: 'block', padding: '12px 8px', margin: '0 -8px', borderBottom: '0.8px solid var(--nexus-border-soft)', borderRadius: 8 }}>
                   <span style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: 'block', fontFamily: '"Geist", sans-serif', fontSize: 13, fontWeight: 500, color: 'var(--nexus-text-primary)', lineHeight: 1.4 }}>{v.title}</span>

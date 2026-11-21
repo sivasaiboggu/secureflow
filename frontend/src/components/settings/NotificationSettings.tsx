@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Container, Paper, Typography, Box, FormControlLabel, Switch, Button, Alert } from '@mui/material';
+import { FormControlLabel, Switch } from '@mui/material';
+import { MessageSquare, Mail, Siren, CheckCircle2 } from 'lucide-react';
 
 const STORAGE_KEY = 'secureflow.notificationPreferences';
 
@@ -22,6 +23,27 @@ function loadPreferences(): { slack: boolean; email: boolean; pagerduty: boolean
   }
 }
 
+const CHANNELS = [
+  {
+    key: 'slack' as const,
+    Icon: MessageSquare,
+    title: 'Slack',
+    desc: 'Route findings to an outage channel webhook.',
+  },
+  {
+    key: 'email' as const,
+    Icon: Mail,
+    title: 'Email',
+    desc: 'Daily compliance summary digest.',
+  },
+  {
+    key: 'pagerduty' as const,
+    Icon: Siren,
+    title: 'PagerDuty',
+    desc: 'Trigger critical incident callouts.',
+  },
+];
+
 export const NotificationSettings: React.FC = () => {
   const [prefs, setPrefs] = useState(loadPreferences);
   const [message, setMessage] = useState('');
@@ -37,34 +59,51 @@ export const NotificationSettings: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4 }}>
-      <Paper sx={{ p: 4, boxShadow: 3 }}>
-        <Typography variant="h5" fontWeight="bold" mb={1}>Alerting Channels Preferences</Typography>
-        <Typography variant="body2" color="text.secondary" mb={4}>
+    <div style={{ padding: '32px', maxWidth: 1400, margin: '0 auto' }}>
+      <div style={{ marginBottom: 40, maxWidth: 720 }}>
+        <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.28em', textTransform: 'uppercase' as const, color: 'var(--nexus-text-muted)', marginBottom: 8 }}>ALERTING</p>
+        <h1 style={{ fontFamily: '"Geist", sans-serif', fontSize: 32, fontWeight: 500, letterSpacing: '-0.04em', color: 'var(--nexus-text-primary)', margin: 0 }}>Notification Preferences</h1>
+        <p style={{ fontFamily: '"Geist", sans-serif', fontSize: 14, color: 'var(--nexus-text-muted)', margin: '8px 0 0', lineHeight: 1.6 }}>
           Route posture scan vulnerabilities automatically to security alerting feeds.
-        </Typography>
+        </p>
+      </div>
 
-        {message && <Alert severity="success" sx={{ mb: 3 }}>{message}</Alert>}
+      <div className="nexus-card" style={{ maxWidth: 720, padding: 28 }}>
+        {message && (
+          <div role="status" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'rgba(74,222,128,0.1)', border: '0.8px solid rgba(74,222,128,0.3)', borderRadius: 10, padding: '12px 16px', marginBottom: 20 }}>
+            <CheckCircle2 size={16} color="var(--sev-low)" style={{ flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontFamily: '"Geist", sans-serif', fontSize: 13, lineHeight: 1.6, color: 'var(--nexus-text-body)', margin: 0 }}>{message}</p>
+          </div>
+        )}
 
-        <Box display="flex" flexDirection="column" gap={2} mb={4}>
-          <FormControlLabel
-            control={<Switch checked={prefs.slack} onChange={(e) => setPrefs({ ...prefs, slack: e.target.checked })} />}
-            label="Slack Integration Webhooks (Enable outage channels alerts)"
-          />
-          <FormControlLabel
-            control={<Switch checked={prefs.email} onChange={(e) => setPrefs({ ...prefs, email: e.target.checked })} />}
-            label="Email Alerts (Daily compliance summaries digest)"
-          />
-          <FormControlLabel
-            control={<Switch checked={prefs.pagerduty} onChange={(e) => setPrefs({ ...prefs, pagerduty: e.target.checked })} />}
-            label="PagerDuty Escapes (Trigger critical incident callouts)"
-          />
-        </Box>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {CHANNELS.map(({ key, Icon, title, desc }, i) => (
+            <div key={key} className="nexus-row" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 8px', margin: '0 -8px', borderBottom: i < CHANNELS.length - 1 ? '0.8px solid var(--nexus-border-soft)' : 'none', borderRadius: 8 }}>
+              <div style={{ width: 40, height: 40, background: 'var(--nexus-elevated-bg)', border: '0.8px solid var(--nexus-border)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nexus-accent-text)', flexShrink: 0 }}>
+                <Icon size={17} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontFamily: '"Geist", sans-serif', fontSize: 15, fontWeight: 500, color: 'var(--nexus-text-primary)', margin: '0 0 3px' }}>{title}</p>
+                <p style={{ fontFamily: '"Geist", sans-serif', fontSize: 13, color: 'var(--nexus-text-muted)', margin: 0, lineHeight: 1.5 }}>{desc}</p>
+              </div>
+              <FormControlLabel
+                control={<Switch checked={prefs[key]} onChange={(e) => setPrefs({ ...prefs, [key]: e.target.checked })} />}
+                label=""
+                sx={{ margin: 0 }}
+              />
+            </div>
+          ))}
+        </div>
 
-        <Button variant="contained" color="primary" onClick={handleSave}>
+        <button
+          onClick={handleSave}
+          style={{ marginTop: 24, background: '#E7FF72', color: '#080b12', border: 'none', borderRadius: 10, padding: '12px 24px', fontSize: 12, fontWeight: 700, fontFamily: '"Geist Mono", monospace', letterSpacing: '0.14em', textTransform: 'uppercase' as const, cursor: 'pointer', transition: 'all 150ms ease' }}
+          onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(231,255,114,0.35)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
+        >
           Save Alerting Rules
-        </Button>
-      </Paper>
-    </Container>
+        </button>
+      </div>
+    </div>
   );
 };

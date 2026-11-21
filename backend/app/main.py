@@ -8,6 +8,7 @@ from prometheus_client import make_asgi_app
 import time
 
 from app.config.settings import settings
+from app.config import database as database_config
 from app.config.database import engine, Base
 from app.api.v1.router import api_router
 from app.core.middleware import RequestLoggingMiddleware, MetricsMiddleware
@@ -38,7 +39,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SecureFlow API",
     description="Cloud security posture research prototype: AWS listing/check workflows, explicit sample-data demos, and review-only remediation plans.",
-    version="1.0.2",
+    version="1.0.3",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
@@ -85,11 +86,11 @@ async def health_check():
 @app.get("/ready")
 async def readiness_check():
     # Check database connection
+    # Looked up on the database module at call time (not imported into this
+    # module's namespace) so tests can substitute the session factory.
+    db = database_config.SessionLocal()
     try:
-        from app.config.database import SessionLocal
-        db = SessionLocal()
         db.execute(text("SELECT 1"))
-        db.close()
         return {"status": "ready"}
     except Exception:
         # Driver errors can include the database user, host or DSN. The probe is
@@ -99,6 +100,10 @@ async def readiness_check():
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"status": "not ready"}
         )
+    finally:
+        # Previously the session was closed only on the success path, so
+        # every failed probe leaked a pooled connection until pool exhaustion.
+        db.close()
 
 # Include API router
 app.include_router(api_router, prefix="/api/v1")

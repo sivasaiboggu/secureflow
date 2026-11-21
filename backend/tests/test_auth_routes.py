@@ -128,6 +128,41 @@ class AuthRouteTests(unittest.TestCase):
         self.assertEqual(self.db.query(User).count(), 1)
         self.assertEqual(self.db.query(Organization).count(), 1)
 
+    def test_refresh_exchanges_refresh_token_for_new_access_token(self):
+        from jose import jwt
+        from app.config.settings import settings
+        registered = self.client.post('/auth/register', json=self.payload())
+        self.assertEqual(registered.status_code, 201, registered.text)
+        result = self.client.post('/auth/refresh', json={'refresh_token': registered.json()['refresh_token']})
+        self.assertEqual(result.status_code, 200, result.text)
+        body = result.json()
+        self.assertTrue(body['access_token'])
+        # Tokens minted in the same second are identical by construction
+        # (same sub, type and expiry), so equality proves nothing; the
+        # decoded type claim is what the exchange must guarantee.
+        decoded = jwt.decode(body['access_token'], settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        self.assertEqual(decoded.get('type'), 'access')
+        self.assertEqual(body['user']['email'], 'founder@example.com')
+
+    def test_refresh_rejects_access_token(self):
+        registered = self.client.post('/auth/register', json=self.payload())
+        self.assertEqual(registered.status_code, 201, registered.text)
+        result = self.client.post('/auth/refresh', json={'refresh_token': registered.json()['access_token']})
+        self.assertEqual(result.status_code, 401, result.text)
+
+    def test_refresh_rejects_garbage_token(self):
+        result = self.client.post('/auth/refresh', json={'refresh_token': 'not-a-token'})
+        self.assertEqual(result.status_code, 401, result.text)
+
+    def test_refresh_rejects_deactivated_user(self):
+        registered = self.client.post('/auth/register', json=self.payload())
+        self.assertEqual(registered.status_code, 201, registered.text)
+        user = self.db.query(User).one()
+        user.is_active = False
+        self.db.commit()
+        result = self.client.post('/auth/refresh', json={'refresh_token': registered.json()['refresh_token']})
+        self.assertEqual(result.status_code, 400, result.text)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -357,9 +357,9 @@ npm run build
 Known state: the backend suite's one pre-existing failure,
 `test_readiness_reports_ready_with_a_working_database`, is FIXED in 1.0.1
 (the test harness evicted `sys.modules` entries mid-import; the fix keeps
-only the intended router swap). The suite is 149 passed, 0 failed with a
-live PostgreSQL instance (140 in 1.0.1, plus 7 timestamp-contract tests and
-2 router-import regression tests added since) — without a live database,
+only the intended router swap). The suite is 160 passed, 0 failed with a
+live PostgreSQL instance (149 in 1.0.2, plus 4 refresh-token tests and
+7 analysis-endpoint tests added in 1.0.3) — without a live database,
 that single readiness test still fails by design, since it tests readiness
 *with a working database*.
 Timestamps are naive UTC by design (all `DateTime` columns are
@@ -367,6 +367,44 @@ timezone-naive); `backend/app/utils/timestamps.py` is the single place that
 produces them, after the deprecated `datetime.utcnow()` was removed.
 
 ## Changelog
+
+### 1.0.3 (21 Nov 2026)
+- Patch release. **Premium UI pass + senior logic review.**
+- UI: design-token layer (radius/easing/focus-ring tokens, global
+  `:focus-visible` ring, selection colour, refined scrollbar, lift/row/
+  live-dot/shimmer utilities); MUI theme gains Switch, Alert, TableRow
+  hover, Tooltip and disabled-button styling; dashboard stat cards lift
+  on hover and findings rows keep a selected state; the finding drawer
+  has a sticky glass header and an animated CVSS gauge; scans show a
+  breathing RUNNING dot, shimmering progress and a spring-animated
+  trigger modal; notifications rebuilt on the Nexus glass system.
+- Logic: `POST /auth/refresh` added — refresh tokens were minted but had
+  no exchange endpoint, so sessions died after 30 minutes; the frontend
+  now retries once on 401 via a refresh interceptor. The two analysis
+  endpoints (`/vulnerabilities/analyze-log`, `/analyze-metrics`) were the
+  only unauthenticated routes — they now require a token, and bad metric
+  payloads return 400 instead of a bare 500. Unknown severity/status
+  filters return 400 instead of a silently empty list. Remediation plans
+  are idempotent (re-saving returns the pending plan, not a duplicate
+  row). Cloud-account duplicate names are matched case-insensitively.
+  Logout no longer wipes theme/notification preferences from
+  localStorage. The Anomaly Evaluator renders the unavailable-detector
+  response honestly, and a failed cloud-account load shows a retry
+  instead of "No cloud accounts registered". Removed dead code: the
+  `get_db_session` helper (returned an already-closed session),
+  `ScanService.get_scan_vulnerabilities` (no callers), the disabled
+  Invite Member button, dead login styles/tabs, and the unused Redux
+  store is documented as intentionally kept (see below). Full suite now
+  160 passed with a live PostgreSQL instance.
+- Known dead code that stays: `app/ml_engine/` (a second ML stack nothing
+  imports), `app/models/` (duplicate models), `app/alerting/`,
+  `app/remediation/auto_remediate.py` and `ansible_playbooks.py`,
+  `app/services/reporting_service.py`, `app/utils/validators.py` and
+  `cache.py`, and `frontend/src/store/index.ts` (Redux store, never
+  wired to a Provider) — deleting files cannot be delivered by the
+  snapshot-push workflow, which cannot do deletions, and removing the
+  Redux dependencies while `store/index.ts` still exists on the remote
+  would break the remote build. They are inert and unreferenced.
 
 ### 1.0.2 (21 Nov 2026)
 - Patch release. **The API could not start**: `compliance.py` used

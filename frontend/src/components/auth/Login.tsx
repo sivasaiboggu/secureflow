@@ -24,6 +24,9 @@ export const Login: React.FC = () => {
       });
 
       localStorage.setItem('token', response.data.access_token);
+      if (response.data.refresh_token) {
+        localStorage.setItem('refresh_token', response.data.refresh_token);
+      }
       localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/dashboard');
     } catch (err: any) {
@@ -64,8 +67,8 @@ export const Login: React.FC = () => {
 
         </div>
 
-          {/* Bottom nav-like tabs */}
-        <div style={styles.tabRow}>
+          {/* Bottom section labels — decorative, not navigation. */}
+        <div style={styles.tabRow} aria-hidden="true">
           {['Platform', 'Architecture', 'Metrics', 'Logs'].map((t, i) => (
             <div key={t} style={{ ...styles.tab, ...(i === 0 ? styles.tabActive : {}) }}>{t}</div>
           ))}
@@ -225,29 +228,6 @@ const styles: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase' as const,
     color: 'var(--nexus-text-muted)',
   },
-  statsRow: {
-    display: 'flex',
-    gap: 48,
-    marginTop: 8,
-  },
-  statItem: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: 4,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 600,
-    letterSpacing: '-0.03em',
-    color: '#E7FF72',
-  },
-  statLabel: {
-    fontFamily: '"Geist Mono", monospace',
-    fontSize: 10,
-    letterSpacing: '0.16em',
-    textTransform: 'uppercase' as const,
-    color: 'var(--nexus-text-muted)',
-  },
   tabRow: {
     display: 'flex',
     gap: 4,
@@ -261,7 +241,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--nexus-text-muted)',
     padding: '6px 14px',
     borderRadius: 0,
-    cursor: 'pointer',
     borderBottom: '0.8px solid transparent',
   },
   tabActive: {
@@ -388,28 +367,5 @@ const styles: Record<string, React.CSSProperties> = {
     borderTopColor: '#080b12',
     borderRadius: '50%',
     animation: 'spin 0.7s linear infinite',
-  },
-  hint: {
-    marginTop: 24,
-    padding: '12px 14px',
-    background: 'var(--nexus-input-bg)',
-    border: '0.8px solid var(--nexus-border-soft)',
-    borderRadius: 8,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: 6,
-  },
-  hintMono: {
-    fontFamily: '"Geist Mono", monospace',
-    fontSize: 9,
-    letterSpacing: '0.22em',
-    textTransform: 'uppercase' as const,
-    color: 'var(--nexus-text-faint)',
-  },
-  hintCode: {
-    fontFamily: '"Geist Mono", monospace',
-    fontSize: 11,
-    color: 'rgba(231,255,114,0.7)',
-    letterSpacing: '0.05em',
   },
 };

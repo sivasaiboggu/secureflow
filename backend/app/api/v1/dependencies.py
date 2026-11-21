@@ -9,15 +9,6 @@ from app.core.exceptions import CredentialsException, PermissionException
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
-def get_db_session() -> Session:
-    """Convenience getter returning active DB session context"""
-    from app.config.database import SessionLocal
-    db = SessionLocal()
-    try:
-        return db
-    finally:
-        db.close()
-
 def get_current_active_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User:
     """Identifies and returns the validated JWT user payload context"""
     try:

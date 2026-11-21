@@ -33,7 +33,7 @@ def get_compliance_checks(
             "title": c.title,
             "status": c.status,
             "resource_id": c.resource_id,
-            "checked_at": c.checked_at.isoformat()
+            "checked_at": c.checked_at.isoformat() if c.checked_at else None
         }
         for c in query.all()
     ]

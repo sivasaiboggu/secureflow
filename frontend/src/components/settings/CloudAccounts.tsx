@@ -30,6 +30,7 @@ export const CloudAccounts: React.FC = () => {
   const [demo, setDemo] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
 
@@ -39,7 +40,12 @@ export const CloudAccounts: React.FC = () => {
     try {
       const res = await api.get('/scans/cloud-accounts');
       setAccounts(res.data);
-    } catch (err) { console.error(err); }
+      setLoadError('');
+    } catch (err) {
+      // A failed load previously rendered as "No cloud accounts
+      // registered", which is wrong: the list is unknown, not empty.
+      setLoadError('Cloud accounts could not be loaded.');
+    }
     finally { setPageLoading(false); }
   };
 
@@ -151,7 +157,14 @@ export const CloudAccounts: React.FC = () => {
 
           {accounts.length === 0 ? (
             <div style={{ padding: 48, textAlign: 'center' as const }}>
-              <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'var(--nexus-text-dim)', letterSpacing: '0.16em', textTransform: 'uppercase' as const }}>No cloud accounts registered</p>
+              <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, color: loadError ? 'var(--sev-critical)' : 'var(--nexus-text-dim)', letterSpacing: '0.16em', textTransform: 'uppercase' as const }}>
+                {loadError || 'No cloud accounts registered'}
+              </p>
+              {loadError && (
+                <button onClick={fetchAccounts} style={{ marginTop: 16, background: 'transparent', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 8, padding: '8px 16px', color: 'var(--nexus-text-primary)', fontSize: 11, fontFamily: '"Geist Mono", monospace', letterSpacing: '0.1em', cursor: 'pointer' }}>
+                  RETRY
+                </button>
+              )}
             </div>
           ) : accounts.map((acc) => (
             <div key={acc.id} style={{ padding: '18px 24px', borderBottom: '0.8px solid var(--nexus-border-soft)', display: 'flex', alignItems: 'center', gap: 16, transition: 'background 150ms ease' }}
