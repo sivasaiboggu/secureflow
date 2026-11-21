@@ -11,13 +11,32 @@ from fastapi.testclient import TestClient
 SECRET = 'PRIVATE_DB_USER_HOST_DSN'
 
 def load_main():
-    """Load app/main.py without the cloud/model router import chain."""
+    """Load app/main.py without the cloud/model router import chain.
+
+    Only the router module itself is stubbed. (A previous version used
+    ``patch.dict(sys.modules, ...)`` around the exec, which restores
+    ``sys.modules`` on exit and evicts every module imported during the
+    exec — ``app.config.database``, ``psycopg`` and the SQLAlchemy
+    dialect included. The loaded app then kept the first-import engine
+    while ``/ready`` re-imported a second ``psycopg`` module, whose
+    ``Connection`` class failed the first engine's ``isinstance`` check
+    (``TypeError: expected Connection or AsyncConnection``), so the
+    readiness probe 503'd even with a working database.)
+    """
     router = types.ModuleType('app.api.v1.router')
     router.api_router = APIRouter()
-    with patch.dict(sys.modules, {'app.api.v1.router': router}):
+    _sentinel = object()
+    old = sys.modules.get('app.api.v1.router', _sentinel)
+    sys.modules['app.api.v1.router'] = router
+    try:
         path = Path(__file__).parents[1] / 'app/main.py'
         spec = importlib.util.spec_from_file_location('test_app_entrypoint_main', path)
         module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    finally:
+        if old is _sentinel:
+            sys.modules.pop('app.api.v1.router', None)
+        else:
+            sys.modules['app.api.v1.router'] = old
     return module
 
 class EntrypointTests(unittest.TestCase):

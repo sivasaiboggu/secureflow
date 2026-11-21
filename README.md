@@ -354,9 +354,21 @@ cd frontend
 npm run build
 ```
 
-Known state: the backend suite has one pre-existing failure,
-`test_readiness_reports_ready_with_a_working_database`, which needs a live
-PostgreSQL instance and fails identically on a clean tree — it is not a
-regression. Timestamps are naive UTC by design (all `DateTime` columns are
+Known state: the backend suite's one pre-existing failure,
+`test_readiness_reports_ready_with_a_working_database`, is FIXED in 1.0.1
+(the test harness evicted `sys.modules` entries mid-import; the fix keeps
+only the intended router swap). The suite is 140 passed, 0 failed with a
+live PostgreSQL instance — without one, that single readiness test still
+fails by design, since it tests readiness *with a working database*.
+Timestamps are naive UTC by design (all `DateTime` columns are
 timezone-naive); `backend/app/utils/timestamps.py` is the single place that
 produces them, after the deprecated `datetime.utcnow()` was removed.
+
+## Changelog
+
+### 1.0.1 (21 Nov 2026)
+- Patch release: no feature changes. The pre-existing
+  `test_readiness_reports_ready_with_a_working_database` failure is FIXED
+  (test-harness `sys.modules` eviction); full backend suite re-verified:
+  140 passed, 0 failed with a live PostgreSQL instance. A `.dockerignore`
+  was added for each image context.

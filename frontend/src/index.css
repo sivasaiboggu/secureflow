@@ -190,6 +190,29 @@ html, body, #root {
 .animate-fade-up { animation: fadeUp 0.5s cubic-bezier(0.4,0,0.2,1) forwards; }
 .animate-breathe { animation: breathe 4s ease-in-out infinite; }
 
+/* Tabular figures so stat values don't jitter when they change. */
+.nexus-tabular { font-variant-numeric: tabular-nums; }
+
+/* Staggered entrance for a row/grid of siblings (React Bits style):
+   add `stagger` to the container; each direct child rises in turn. */
+.stagger > * { animation: fadeUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.stagger > *:nth-child(3) { animation-delay: 0.14s; }
+.stagger > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger > *:nth-child(5) { animation-delay: 0.26s; }
+.stagger > *:nth-child(6) { animation-delay: 0.32s; }
+
+/* Motion should clarify, not gate: honour reduced-motion everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ─── Nexus button primary ─── */
 .nexus-btn-primary {
   background: var(--nexus-primary);

@@ -69,7 +69,7 @@ const StatCard: React.FC<{ label: string; value: string | number; sub?: string; 
       background: `linear-gradient(90deg, transparent, color-mix(in srgb, ${accent} 25%, transparent), transparent)`,
     }} />
     <p style={{ ...monoLabel, marginBottom: 12 }}>{label}</p>
-    <p style={{ fontFamily: '"Geist", sans-serif', fontSize: 40, fontWeight: 600, letterSpacing: '-0.04em', color: accent, margin: 0, lineHeight: 1 }}>
+    <p style={{ fontFamily: '"Geist", sans-serif', fontSize: 40, fontWeight: 600, letterSpacing: '-0.04em', color: accent, margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
       {value}
     </p>
     {sub && <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'var(--nexus-text-faint)', marginTop: 8, letterSpacing: '0.1em' }}>{sub}</p>}
