@@ -11,7 +11,7 @@ SecureFlow helps cloud security teams run AWS checks, review the resulting findi
 | [React Bits Fade Content](https://reactbits.dev/animations/fade-content) | Use a short view reveal with a small vertical offset. |
 | [Magic UI Animated List](https://magicui.design/docs/components/animated-list) | Stagger only the first few rows when fresh results appear. |
 | [Uiverse buttons](https://uiverse.io/buttons) | Give real controls a brief press displacement and visible keyboard focus. |
-| [Mobbin](https://mobbin.com/) | Use a direct sign-in sequence with persistent labels and a password visibility control. The deep-link pattern gallery required access, so the public showcase and help flow were used. |
+| [Mobbin](https://mobbin.com/) | Use a direct sign-in sequence with persistent labels and a password visibility control. The deep-link pattern gallery was unavailable. The public showcase and help flow were used. |
 | [Inspora quick-action menu](https://www.inspora.design/posts/one-tap-menu-bypass) | Offer a keyboard shortcut to jump between views. |
 | [Refero Styles dashboard examples](https://styles.refero.design/examples/dashboard-ui-design) | Place the aggregate pass rate beside the historical chart and leave priority findings in a separate pane. |
 

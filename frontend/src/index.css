@@ -173,7 +173,7 @@ input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent);
 
 .login-page { max-width: 1440px; min-height: 100svh; margin-inline: auto; display: flex; flex-direction: column; }
 .login-bar { min-height: 72px; padding: var(--space-3) var(--gutter); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
-.login-grid { display: grid; gap: var(--space-4); width: min(100%, 1088px); margin: auto; padding: var(--space-8) var(--gutter); animation: sheet-enter var(--motion-view) var(--spring) backwards; }
+.login-grid { display: grid; gap: var(--space-4); width: min(100%, 1088px); margin: auto; padding: var(--space-8) var(--gutter); }
 .login-intro, .login-form-section { min-width: 0; padding: var(--space-5); border-radius: var(--radius-sheet); }
 .login-intro { background: var(--rail) url("/slate-grain.png"); box-shadow: var(--elevation-1); }
 .login-intro h2 { font-size: clamp(1.375rem, 1.05rem + 1.4vw, 2rem); margin-bottom: var(--space-2); }
@@ -181,7 +181,9 @@ input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent);
 .login-form, .login-capabilities { display: grid; gap: var(--space-4); }
 .login-form h1 { margin-bottom: var(--space-2); }
 .login-capabilities { margin-top: var(--space-5); }
-.login-capabilities li { display: flex; align-items: flex-start; gap: var(--space-3); border-top: 1px solid var(--line); padding-top: var(--space-3); }
+.login-capabilities li { animation: row-enter var(--motion-view) var(--spring) backwards; display: flex; align-items: flex-start; gap: var(--space-3); border-top: 1px solid var(--line); padding-top: var(--space-3); }
+.login-capabilities li:nth-child(2) { animation-delay: var(--motion-stagger); }
+.login-capabilities li:nth-child(3) { animation-delay: calc(var(--motion-stagger) * 2); }
 .login-capabilities strong, .login-capabilities small { display: block; }
 .login-capabilities svg { margin-top: var(--space-1); flex: none; color: var(--accent); }
 .password-field { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); }
