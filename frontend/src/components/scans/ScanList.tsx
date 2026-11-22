@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { CircularProgress, Box } from '@mui/material';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ScanSearch } from 'lucide-react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Plus } from 'lucide-react';
 import { api } from '../../services/api';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 import { useToast } from '../common/ToastContext';
+import { apiMessage, EmptyState, Meter, Notice, PageHeader, SectionHeading, Sheet, Status, TextLink } from '../common/Workspace';
 
 interface Scan {
   id: string;
@@ -14,239 +14,153 @@ interface Scan {
   created_at: string;
 }
 
-interface CloudAccount {
-  id: string;
-  name: string;
-  provider: string;
-  is_active: boolean;
-}
+interface CloudAccount { id: string; name: string; provider: string; is_active: boolean }
 
-const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  // Border colours are explicit rgba values: appending an alpha suffix to a
-  // var(--...) colour (e.g. `var(--sev-high)40`) is invalid CSS, so the
-  // border was silently dropped and badges rendered borderless.
-  const map: Record<string, { bg: string; color: string; border: string }> = {
-    DEMO_COMPLETED: { bg: 'rgba(251,191,36,0.12)', color: 'var(--sev-medium)', border: 'rgba(251,191,36,0.35)' },
-    COMPLETED: { bg: 'rgba(231,255,114,0.12)', color: 'var(--nexus-accent-text)', border: 'rgba(231,255,114,0.35)' },
-    RUNNING: { bg: 'rgba(6,182,212,0.12)', color: 'var(--nexus-cyan-text)', border: 'rgba(6,182,212,0.35)' },
-    PENDING: { bg: 'rgba(251,191,36,0.12)', color: 'var(--sev-medium)', border: 'rgba(251,191,36,0.35)' },
-    FAILED: { bg: 'rgba(248,113,113,0.12)', color: 'var(--sev-critical)', border: 'rgba(248,113,113,0.35)' },
-  };
-  const s = map[status] || { bg: 'var(--nexus-elevated-bg)', color: 'var(--nexus-text-muted)', border: 'var(--nexus-border-strong)' };
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: s.bg, color: s.color, border: `0.8px solid ${s.border}`, borderRadius: 6, padding: '2px 8px', fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.1em', fontWeight: 600 }}>
-      {status === 'RUNNING' && <span className="nexus-live-dot" aria-hidden="true" />}
-      {status}
-    </span>
-  );
+const scanStatuses: Record<string, { label: string; tone: string }> = {
+  DEMO_COMPLETED: { label: 'Sample complete', tone: 'warning' },
+  COMPLETED: { label: 'Completed', tone: 'success' },
+  RUNNING: { label: 'Running', tone: 'accent' },
+  PENDING: { label: 'Queued', tone: 'neutral' },
+  FAILED: { label: 'Failed', tone: 'error' },
 };
 
-const ProgressBar: React.FC<{ value: number }> = ({ value }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-    <div style={{ flex: 1, height: 6, background: 'var(--nexus-elevated-bg)', borderRadius: 4, overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.25)' }}>
-      <div style={{ height: '100%', width: `${value}%`, background: value === 100 ? '#E7FF72' : '#06B6D4', borderRadius: 4, transition: 'width 500ms ease' }} />
-    </div>
-    <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'var(--nexus-text-muted)', minWidth: 32 }}>{Math.round(value)}%</span>
-  </div>
-);
+const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
-export const ScanList: React.FC = () => {
+export function ScanList() {
   const { showToast } = useToast();
-  const [scans, setScans] = useState<Scan[]>([]);
+  const [scans, setScans] = useState<Scan[] | null>(null);
   const [accounts, setAccounts] = useState<CloudAccount[]>([]);
+  const [scanError, setScanError] = useState('');
+  const [accountError, setAccountError] = useState('');
+  const [accountsLoading, setAccountsLoading] = useState(true);
   const [selectedAccount, setSelectedAccount] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
-    fetchAll();
-    const interval = setInterval(() => {
-      // No polling while the tab is hidden: scans keep running server-side
-      // and the list refreshes when the tab is visible again.
-      if (!document.hidden) fetchScans();
-    }, 4000);
-    return () => clearInterval(interval);
+    const request = new AbortController();
+    let pending = false;
+    async function refreshScans() {
+      if (pending) return;
+      pending = true;
+      try {
+        const { data } = await api.get<Scan[]>('/scans', { signal: request.signal });
+        if (!request.signal.aborted) {
+          setScans(data);
+          setScanError('');
+        }
+      } catch (error) {
+        if (!request.signal.aborted) setScanError(apiMessage(error, 'Could not load scan history.'));
+      } finally {
+        pending = false;
+      }
+    }
+    void refreshScans();
+    const interval = window.setInterval(() => { if (!document.hidden) void refreshScans(); }, 4000);
+    const refreshWhenVisible = () => { if (!document.hidden) void refreshScans(); };
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      request.abort();
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [revision]);
+
+  async function fetchAccounts(signal?: AbortSignal) {
+    setAccountsLoading(true);
+    setAccountError('');
+    try {
+      const { data } = await api.get<CloudAccount[]>('/scans/cloud-accounts', { signal });
+      if (!signal?.aborted) setAccounts(data);
+    } catch (error) {
+      if (!signal?.aborted) setAccountError(apiMessage(error, 'Could not load cloud accounts.'));
+    } finally {
+      if (!signal?.aborted) setAccountsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const request = new AbortController();
+    void fetchAccounts(request.signal);
+    return () => request.abort();
   }, []);
 
-  // Escape closes the trigger-scan modal, matching the finding drawer.
-  useEffect(() => {
-    if (!showModal) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowModal(false); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [showModal]);
+  const activeAccounts = accounts.filter(account => account.is_active);
+  const validSelection = activeAccounts.some(account => account.id === selectedAccount);
 
-  const fetchAll = async () => {
-    await Promise.all([fetchScans(), fetchAccounts()]);
-    setPageLoading(false);
-  };
-
-  const fetchScans = async () => {
-    try {
-      const res = await api.get('/scans');
-      setScans(res.data);
-    } catch (err) { console.error(err); }
-  };
-
-  const fetchAccounts = async () => {
-    try {
-      const res = await api.get('/scans/cloud-accounts');
-      setAccounts(res.data);
-    } catch (err) { console.error(err); }
-  };
-
-  const triggerScan = async () => {
-    if (!selectedAccount) return;
-    setLoading(true);
+  async function triggerScan(event: FormEvent) {
+    event.preventDefault();
+    if (submitting || !validSelection) return;
+    setSubmitting(true);
+    setSubmitError('');
     try {
       await api.post('/scans', { cloud_account_id: selectedAccount });
       setShowModal(false);
-      showToast('Scan started — results will appear as the scan progresses.', 'success');
-      fetchScans();
-    } catch (err: any) {
-      showToast(err.response?.data?.detail || 'Failed to trigger scan.', 'error');
+      showToast('Scan queued. The history updates as checks run.', 'success');
+      setRevision(previous => previous + 1);
+    } catch (error) {
+      setSubmitError(apiMessage(error, 'Could not start the scan. Try again.'));
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
-  };
+  }
 
-  if (pageLoading) return (
-    <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-      <CircularProgress size={40} sx={{ color: 'var(--nexus-accent-bar)' }} />
-    </Box>
-  );
+  function openModal() {
+    setSubmitError('');
+    if (accountError && !accountsLoading) void fetchAccounts();
+    setShowModal(true);
+  }
 
-  return (
-    <div className="scan-page" style={{ padding: '32px', maxWidth: 1400, margin: '0 auto' }}>
-      {/* Header */}
-      <div className="scan-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
-        <div>
-          <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.28em', textTransform: 'uppercase' as const, color: 'var(--nexus-text-muted)', marginBottom: 8 }}>CLOUD INFRASTRUCTURE</p>
-          <h1 style={{ fontFamily: '"Geist", sans-serif', fontSize: 32, fontWeight: 500, letterSpacing: '-0.04em', color: 'var(--nexus-text-primary)', margin: 0 }}>Compliance Scans</h1>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          style={{ background: '#E7FF72', color: '#080b12', border: 'none', borderRadius: 10, padding: '11px 22px', fontSize: 12, fontWeight: 700, fontFamily: '"Geist Mono", monospace', letterSpacing: '0.14em', textTransform: 'uppercase' as const, cursor: 'pointer', transition: 'all 150ms ease', display: 'flex', alignItems: 'center', gap: 8 }}
-          onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 6px 20px rgba(231,255,114,0.35)'}
-          onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
-        >
-          <Plus size={14} strokeWidth={2.5} />
-          Trigger Scan
-        </button>
-      </div>
-
-      <p role="note" style={{ color: 'var(--nexus-text-body)', lineHeight: 1.7, fontSize: 13, marginBottom: 20 }}>Demo results are sample data, never a verified cloud assessment. Failed scans have no complete result. A completed scan covers only the implemented checks, not a full compliance audit.</p>
-      {/* Scans Table */}
-      <div style={{ background: 'var(--nexus-surface)', border: '0.8px solid var(--nexus-border)', borderRadius: 12, overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '0.8px solid var(--nexus-border-soft)' }}>
-              {['Scan ID', 'Cloud Account', 'Status', 'Progress', 'Findings', 'Triggered At'].map((h) => (
-                <th key={h} style={{ padding: '14px 20px', textAlign: 'left' as const, fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase' as const, color: 'var(--nexus-text-faint)', fontWeight: 600 }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {scans.length === 0 ? (
-              <tr>
-                <td colSpan={6} style={{ padding: '56px 24px', textAlign: 'center' as const }}>
-                  <ScanSearch size={24} color="var(--nexus-text-faint)" style={{ marginBottom: 12 }} />
-                  <p style={{ fontFamily: '"Geist", sans-serif', fontSize: 15, fontWeight: 500, color: 'var(--nexus-text-primary)', margin: '0 0 6px' }}>No scans yet</p>
-                  <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, letterSpacing: '0.08em', color: 'var(--nexus-text-muted)', margin: 0 }}>Trigger your first scan to begin posture analysis</p>
-                </td>
-              </tr>
-            ) : scans.map((scan) => (
-              <tr key={scan.id} className="nexus-row" style={{ borderBottom: '0.8px solid var(--nexus-border-soft)' }}
-              >
-                <td style={{ padding: '16px 20px', fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'var(--nexus-text-secondary)' }}>
-                  {scan.id.substring(0, 12)}…
-                </td>
-                <td style={{ padding: '16px 20px', fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'var(--nexus-text-secondary)' }}>
-                  {scan.cloud_account_id.substring(0, 10)}…
-                </td>
-                <td style={{ padding: '16px 20px' }}>
-                  <StatusBadge status={scan.status} />
-                </td>
-                <td style={{ padding: '16px 20px', minWidth: 160 }}>
-                  <ProgressBar value={scan.progress} />
-                </td>
-                <td style={{ padding: '16px 20px' }}>
-                  <span style={{ fontFamily: '"Geist", sans-serif', fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', color: scan.vulnerabilities_found > 0 ? 'var(--sev-high)' : 'var(--sev-low)' }}>
-                    {scan.status === 'COMPLETED' || scan.status === 'DEMO_COMPLETED' ? scan.vulnerabilities_found : '-'}
-                  </span>
-                </td>
-                <td style={{ padding: '16px 20px', fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'var(--nexus-text-faint)' }}>
-                  {new Date(scan.created_at).toLocaleString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Modal */}
-      <AnimatePresence>
-      {showModal && (
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          transition={{ duration: 0.18 }}
-          onClick={() => setShowModal(false)}
-          style={{ position: 'fixed', inset: 0, background: 'var(--nexus-overlay)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <motion.div
-            role="dialog" aria-modal="true" aria-label="Start cloud scan"
-            initial={{ opacity: 0, scale: 0.96, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 6 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 380 }}
-            onClick={(e) => e.stopPropagation()}
-            style={{ background: 'var(--nexus-surface-strong)', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 16, padding: 24, width: 400, maxWidth: 'calc(100vw - 28px)', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'rgba(0,0,0,0.6) 0px 24px 80px' }}
-          >
-            <h2 style={{ fontFamily: '"Geist", sans-serif', fontSize: 22, fontWeight: 500, letterSpacing: '-0.03em', color: 'var(--nexus-text-primary)', marginBottom: 6 }}>Start Cloud Scan</h2>
-            <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'var(--nexus-text-muted)', letterSpacing: '0.1em', marginBottom: 28 }}>SELECT TARGET CLOUD ACCOUNT</p>
-
-            <label htmlFor="scan-account-select" style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase' as const, color: 'var(--nexus-text-muted)', display: 'block', marginBottom: 8 }}>Cloud Account</label>
-            <select
-              id="scan-account-select"
-              value={selectedAccount}
-              onChange={(e) => setSelectedAccount(e.target.value)}
-              style={{ width: '100%', background: 'var(--nexus-input-bg)', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontFamily: '"Geist", sans-serif', color: 'var(--nexus-text-primary)', outline: 'none', marginBottom: 8, cursor: 'pointer' }}
-            >
-              <option value="" style={{ background: 'var(--nexus-surface-solid)' }}>Select account...</option>
-              {/* Inactive accounts cannot be scanned — the API rejects them
-                  with 400 — so they must never appear as choices here.
-                  The settings page lists them; this modal lists only the
-                  accounts a scan can actually run against. */}
-              {accounts.filter((acc) => acc.is_active).map((acc) => (
-                <option key={acc.id} value={acc.id} style={{ background: 'var(--nexus-surface-solid)' }}>
-                  {acc.name} - {acc.provider.toUpperCase()}
-                </option>
-              ))}
-            </select>
-            {accounts.every((acc) => !acc.is_active) && (
-              <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.06em', color: 'var(--sev-medium)', margin: '0 0 20px', lineHeight: 1.6 }}>
-                No active cloud account — register one in Settings → Cloud Accounts before scanning.
-              </p>
-            )}
-
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button
-                onClick={() => setShowModal(false)}
-                style={{ flex: 1, background: 'transparent', border: '0.8px solid var(--nexus-border-strong)', borderRadius: 10, padding: '11px 20px', color: 'var(--nexus-text-muted)', fontSize: 12, fontFamily: '"Geist", sans-serif', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={triggerScan}
-                disabled={loading || !selectedAccount}
-                style={{ flex: 1, background: selectedAccount ? '#E7FF72' : 'rgba(231,255,114,0.3)', color: '#080b12', border: 'none', borderRadius: 10, padding: '11px 20px', fontSize: 12, fontWeight: 700, fontFamily: '"Geist Mono", monospace', letterSpacing: '0.12em', cursor: selectedAccount ? 'pointer' : 'not-allowed', textTransform: 'uppercase' as const }}
-              >
-                {loading ? 'Launching...' : 'Execute'}
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-      </AnimatePresence>
+  return <div className="page scan-page">
+    <PageHeader title="Scans" description="Run checks against a cloud account and follow each run."
+      action={<button type="button" className="button primary" onClick={openModal}><Plus size={18} aria-hidden="true" />New scan</button>} />
+    <div className="stack">
+      <p className="scope-note">Demo scans use sample data. Failed runs have no complete result. Completed runs cover the checks SecureFlow implements.</p>
+      {scanError && <Notice tone="error">{scanError}{scans && ' Showing the last successful load.'}
+        <div><button type="button" className="text-link" onClick={() => setRevision(previous => previous + 1)}>Retry</button></div>
+      </Notice>}
+      <section className="ledger">
+        <SectionHeading title="Scan history" action={scans && <span className="meta">{scans.length} shown</span>} />
+        {!scans && !scanError && <LoadingSpinner label="Loading scan history…" />}
+        {scans?.length === 0 && <EmptyState title="No scans yet"><p>Choose a cloud account to run its first checks.</p><button type="button" className="text-link" onClick={openModal}>Start a scan</button></EmptyState>}
+        {!!scans?.length && <div className="table-wrap" tabIndex={0} role="region" aria-label="Scan history table">
+          <table className="ledger-table scan-table">
+            <thead><tr><th scope="col">Cloud account</th><th scope="col">Status</th><th scope="col">Progress</th><th scope="col">Findings</th><th scope="col">Started</th></tr></thead>
+            <tbody>{scans.map(scan => {
+              const account = accounts.find(account => account.id === scan.cloud_account_id);
+              const status = scanStatuses[scan.status] || { label: scan.status, tone: 'neutral' };
+              const finished = scan.status === 'COMPLETED' || scan.status === 'DEMO_COMPLETED';
+              return <tr key={scan.id}>
+                <td><span className="row-title" title={scan.cloud_account_id}>{account?.name || scan.cloud_account_id}</span><small className="mono" title={scan.id}>{scan.id.slice(0, 12)}{scan.id.length > 12 && '…'}</small></td>
+                <td><Status tone={status.tone}>{status.label}</Status></td>
+                <td><div className="meter-row"><Meter value={scan.progress} label={`Progress for scan ${scan.id}`} tone={status.tone} /><span className="number">{Math.round(scan.progress)}%</span></div></td>
+                <td className="number">{finished ? scan.vulnerabilities_found : '—'}</td>
+                <td><time dateTime={scan.created_at}>{dateTime.format(new Date(scan.created_at))}</time></td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>}
+      </section>
     </div>
-  );
-};
+    {showModal && <Sheet title="Start a scan" closeLabel="Close scan dialog" onClose={() => { if (!submitting) setShowModal(false); }}>
+      <form className="stack" onSubmit={triggerScan} aria-busy={submitting}>
+        <div className="field">
+          <label htmlFor="scan-account-select">Cloud account</label>
+          <select id="scan-account-select" value={selectedAccount} onChange={event => setSelectedAccount(event.target.value)} required disabled={accountsLoading || submitting || !!accountError}>
+            <option value="">{accountsLoading ? 'Loading accounts…' : 'Choose an account'}</option>
+            {activeAccounts.map(account => <option key={account.id} value={account.id}>{account.name} · {account.provider.toUpperCase()}</option>)}
+          </select>
+        </div>
+        {!accountsLoading && !accountError && !activeAccounts.length && <EmptyState title="No active cloud accounts"><TextLink to="/settings/accounts">Register an account</TextLink></EmptyState>}
+        {accountError && <Notice tone="error">{accountError}<div><button type="button" className="text-link" onClick={() => void fetchAccounts()}>Retry</button></div></Notice>}
+        {submitError && <Notice tone="error">{submitError}</Notice>}
+        <div className="form-actions">
+          <button type="submit" className="button primary" disabled={submitting || !validSelection || accountsLoading || !!accountError}>{submitting ? 'Starting…' : 'Start scan'}</button>
+          <button type="button" className="button" onClick={() => setShowModal(false)} disabled={submitting}>Cancel</button>
+        </div>
+      </form>
+    </Sheet>}
+  </div>;
+}

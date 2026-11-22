@@ -3,17 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SecureFlow CSPM</title>
-    <!-- Inline SVG favicon (Nexus hexagon mark): no /favicon.ico file is
-         shipped, so without this every load logs a 404 for the icon. -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23080b12'/%3E%3Cpolygon points='20,2 38,12 38,28 20,38 2,28 2,12' fill='none' stroke='%23E7FF72' stroke-width='1.5'/%3E%3Ccircle cx='20' cy='20' r='4.5' fill='%23E7FF72'/%3E%3C/svg%3E" />
-    <!-- Google Fonts for premium typography styling -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;700&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <meta name="description" content="Review AWS security checks, cloud findings and Terraform plans in SecureFlow." />
+    <meta name="robots" content="noindex, noarchive" />
+    <meta name="theme-color" content="#1c1d17" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="SecureFlow" />
+    <meta property="og:description" content="Review AWS security checks, cloud findings and Terraform plans." />
+    <meta property="og:image" content="/secureflow-share.png" />
+    <meta property="og:image:alt" content="SecureFlow wordmark and ledger rules" />
+    <link rel="icon" href="/secureflow.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="preload" href="/node_modules/@fontsource-variable/instrument-sans/files/instrument-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="manifest" href="/secureflow.webmanifest" />
+    <title>SecureFlow</title>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>SecureFlow needs JavaScript to open the workspace.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

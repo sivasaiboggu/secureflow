@@ -1,78 +1,50 @@
-import React, { useEffect, useState } from 'react';
-import { Container, Paper, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Box, CircularProgress, Alert } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { api } from '../../services/api';
+import { LoadingSpinner } from '../common/LoadingSpinner';
+import { apiMessage, EmptyState, Notice, PageHeader, SectionHeading, Status } from '../common/Workspace';
 
-interface OrgUser {
-  email: string;
-  full_name: string | null;
-  role: string | null;
-  is_active: boolean;
-}
+interface OrgUser { email: string; full_name: string | null; role: string | null; is_active: boolean }
 
-export const UserManagement: React.FC = () => {
-  const [users, setUsers] = useState<OrgUser[]>([]);
-  const [loading, setLoading] = useState(true);
+export function UserManagement() {
+  const [users, setUsers] = useState<OrgUser[] | null>(null);
   const [error, setError] = useState('');
 
+  async function load(signal?: AbortSignal) {
+    setError('');
+    try {
+      const { data } = await api.get<OrgUser[]>('/users', { signal });
+      if (!signal?.aborted) setUsers(data);
+    } catch (error) {
+      if (!signal?.aborted) setError(apiMessage(error, 'Could not load the organization directory.'));
+    }
+  }
+
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await api.get('/users');
-        if (!cancelled) setUsers(res.data);
-      } catch (err) {
-        if (!cancelled) setError('The organization directory could not be loaded.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
+    const request = new AbortController();
+    void load(request.signal);
+    return () => request.abort();
   }, []);
 
-  return (
-    <Container maxWidth="xl" sx={{ mt: 4 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h5" fontWeight="bold">Organization User Directory</Typography>
-      </Box>
-
-      {error && <Alert severity="warning" sx={{ mb: 2 }}>{error}</Alert>}
-
-      {loading ? (
-        <Box display="flex" justifyContent="center" py={6}><CircularProgress size={36} sx={{ color: '#E7FF72' }} /></Box>
-      ) : (
-        <TableContainer component={Paper} sx={{ boxShadow: 3 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Full Name</TableCell>
-                <TableCell>Email Address</TableCell>
-                <TableCell>Security Role</TableCell>
-                <TableCell>Account Status</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.length === 0 && !error ? (
-                <TableRow>
-                  <TableCell colSpan={4}>No members found for this organization.</TableCell>
-                </TableRow>
-              ) : (
-                users.map((u) => (
-                  <TableRow key={u.email}>
-                    <TableCell>{u.full_name || 'Not provided'}</TableCell>
-                    <TableCell>{u.email}</TableCell>
-                    <TableCell>
-                      <Chip label={u.role || 'user'} size="small" color={u.role === 'admin' ? 'primary' : 'default'} />
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={u.is_active ? 'Active' : 'Inactive'} size="small" color={u.is_active ? 'success' : 'default'} variant="outlined" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Container>
-  );
-};
+  return <div className="page">
+    <PageHeader title="User directory" description="Members, roles and account status in your organization." />
+    <section className="ledger">
+      <SectionHeading title="Organization members" action={users && <span className="meta">{users.length} shown</span>} />
+      {!users && !error && <LoadingSpinner label="Loading members…" />}
+      {error && <div className="section-body"><Notice tone="error">{error}
+        <div><button type="button" className="text-link" onClick={() => void load()}>Retry</button></div>
+      </Notice></div>}
+      {users?.length === 0 && <EmptyState title="No organization members found" />}
+      {!!users?.length && <div className="table-wrap" tabIndex={0} role="region" aria-label="Organization members table">
+        <table className="ledger-table user-table">
+          <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Status</th></tr></thead>
+          <tbody>{users.map(user => <tr key={user.email}>
+            <td><span className="row-title">{user.full_name || 'Name unavailable'}</span></td>
+            <td>{user.email}</td>
+            <td>{user.role || 'user'}</td>
+            <td><Status tone={user.is_active ? 'success' : 'neutral'}>{user.is_active ? 'Active' : 'Inactive'}</Status></td>
+          </tr>)}</tbody>
+        </table>
+      </div>}
+    </section>
+  </div>;
+}

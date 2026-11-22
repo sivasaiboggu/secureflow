@@ -1,11 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
-// Relative asset base: the built index.html must work from any path, not
-// only the server root. With the default absolute '/assets/...' paths a
-// build opened from a file or served under a sub-path (GitHub Pages, a
-// static host) loaded a blank page because the bundles 404'd.
+// Root-relative assets are required for direct navigation to nested SPA routes.
 export default defineConfig({
-  base: './',
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
 });
