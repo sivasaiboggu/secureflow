@@ -18,11 +18,11 @@ export const buildNexusTheme = (mode: NexusMode): Theme => {
       mode,
       primary: dark
         ? { main: '#E7FF72', contrastText: '#080b12' }
-        : { main: '#65A30D', contrastText: '#FFFFFF' },
-      secondary: dark ? { main: '#06B6D4' } : { main: '#0891B2' },
+        : { main: '#46700E', contrastText: '#FFFFFF' },
+      secondary: dark ? { main: '#06B6D4' } : { main: '#0E7490' },
       error: dark ? { main: '#f87171' } : { main: '#DC2626' },
-      warning: dark ? { main: '#fb923c' } : { main: '#D97706' },
-      success: dark ? { main: '#4ade80' } : { main: '#16A34A' },
+      warning: dark ? { main: '#fb923c' } : { main: '#8A6100' },
+      success: dark ? { main: '#4ade80' } : { main: '#166534' },
       background: {
         default: dark ? '#080b12' : '#F4F1E9',
         paper: dark ? '#0e121b' : '#FFFFFF',

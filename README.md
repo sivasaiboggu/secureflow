@@ -334,7 +334,7 @@ route contracts now describe heuristic review and optional local models instead
 of claiming applied NLP or autoencoder detection.
 
 ### Dashboard UX
-- The dashboard shows a compliance overview with per-framework progress bars (CIS, NIST, PCI DSS, HIPAA, GDPR) from `GET /api/v1/compliance/summary`, and the top five critical/high findings by CVSS with a link to the findings page. Both sections show an honest empty state when there is nothing to show — no invented scores.
+- The dashboard shows a compliance overview with per-framework progress bars from `GET /api/v1/compliance/summary`, and the top five critical/high findings by CVSS with a link to the findings page. Both sections show an honest empty state when there is nothing to show — no invented scores. The summary scores only frameworks with evaluated checks: after a scan that is CIS (one row per control, PASS or FAIL), so the overview reads e.g. CIS 13% after a demo scan (1 of 8 controls pass) rather than a row of zeroes. The dashboard's compliance card is the same pass rate weighted across finished scans, and the trend chart plots one point per finished scan.
 - The vulnerabilities page is a searchable, filterable list (severity pills with counts, open/remediated status, text search across title, resource and type). Selecting a finding opens a slide-over drawer with numbered remediation steps derived from the recommendation, compliance frameworks, a copyable Terraform fix, and the review-only "Save plan for review" action. Escape, backdrop click, or the close button dismisses it.
 
 ## Running tests
@@ -357,10 +357,11 @@ npm run build
 Known state: the backend suite's one pre-existing failure,
 `test_readiness_reports_ready_with_a_working_database`, is FIXED in 1.0.1
 (the test harness evicted `sys.modules` entries mid-import; the fix keeps
-only the intended router swap). The suite is 178 passed, 0 failed with a
+only the intended router swap). The suite is 185 passed, 0 failed with a
 live PostgreSQL instance (149 in 1.0.2, plus 4 refresh-token tests and
 7 analysis-endpoint tests added in 1.0.3, plus 2 tests added in 1.0.4,
-plus 10 tests added in 1.0.5, plus 6 tests added in 1.0.6) —
+plus 10 tests added in 1.0.5, plus 6 tests added in 1.0.6, plus 7
+tests added in 1.0.7) —
 without a live database, that single readiness test still fails by design,
 since it tests readiness *with a working database*.
 Timestamps are naive UTC by design (all `DateTime` columns are
@@ -368,6 +369,53 @@ timezone-naive); `backend/app/utils/timestamps.py` is the single place that
 produces them, after the deprecated `datetime.utcnow()` was removed.
 
 ## Changelog
+
+### 1.0.7 (22 Nov 2026)
+- Patch release. **Compliance numbers are real now, light-mode text
+  passes AA, login facts are real.**
+- Logic (the main fix): the compliance score could never exceed 0%.
+  The scan pipeline only wrote finding-derived compliance rows, and
+  every one of those is a FAIL — a row only exists when something
+  failed — so the dashboard card, the framework overview and the
+  trend chart all read 0% after every scan, demo or real, by
+  construction. No code path produced the "76% = 16/21" figure quoted
+  in the 1.0.6 notes. The worker now also writes one row per CIS
+  control (8 controls, PASS when no finding violates it, FAIL with
+  the violating resources, marked `control_level` in evidence), the
+  scan's passed/failed counters count those rows, and
+  `GET /compliance/summary` scores from them when they exist (older
+  scans without them fall back to all rows). Measured with the real
+  demo scanners: a demo scan passes 1 of 8 controls (1.8, password
+  policy length) for 12.5%; the seeded scan passes 4 of 8 for 50%.
+  The CIS evaluator itself had a matching bug: it failed control 1.2
+  on a "2.1.2" finding (substring match) and on "PCI-DSS 1.2"
+  (another framework's control with the same number). It now matches
+  the CIS family plus the exact control token. The seed script writes
+  the same 8 control rows (4 passed / 4 failed) so a seeded database
+  agrees with the pipeline.
+- UI: light-mode text colours were deepened to pass WCAG AA 4.5:1 on
+  both the paper background and white cards — accent text #46700E
+  (was 4.42:1 on paper), high #C2410C (was 3.56:1), medium #8A6100
+  (was 2.94:1), low #166534 (was 3.30:1); accent bar #4D7C0F.
+  The MUI palette mirrors the same values in light mode (primary
+  #46700E, secondary #0E7490, warning #8A6100, success #166534).
+  Full OKLCH token set in `frontend/src/theme/tokens.json` with the
+  computed contrast table in `docs/design-tokens-1.0.7.md`. The login
+  brand panel's four decorative tab labels (which did nothing) are a
+  ledger facts strip with real product numbers: 7 AWS scanners, 8 CIS
+  controls per scan, Terraform fixes included. The Cloud Accounts page
+  still claimed live credentials are stored without encryption; the
+  README corrected that claim in 1.0.5 but the UI copy never caught
+  up — it now says they are sealed AES-256-GCM under
+  CLOUD_CREDENTIALS_KEY, and real accounts cannot be registered
+  without that key. The screenshot fixtures
+  in `scripts/shots.mjs` used numbers the backend cannot produce
+  (CIS 68, mean CVSS 7.14); they are the real outputs now — demo scan
+  1/7, production scan 6/2, CIS 12.5, mean CVSS 6.94.
+- Tests: 7 new tests (demo/seed CIS scores, control-token matching,
+  worker control rows and counters, summary preference and fallback).
+  Suite: 185 passed with a live database; without one, the same
+  single readiness test fails by design, as before.
 
 ### 1.0.6 (22 Nov 2026)
 - Patch release. **Config correctness, copy honesty, small logic fixes.**

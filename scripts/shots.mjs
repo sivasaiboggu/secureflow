@@ -44,10 +44,15 @@ const API = 'http://127.0.0.1:8000/api/v1';
 const INDEX_URL = `file://${SHOTS_DIST}/index.html`;
 
 // Canned API data. Synthetic, shaped like real demo-scan output; the app
-// itself labels demo results as sample data.
+// itself labels demo results as sample data. The numbers below are the
+// real backend outputs, not invented ones: a demo scan evaluates the 8
+// CIS controls and passes 1 (1.8, password-policy length) for 12.5%,
+// and the mostly-clean production scan passes 6 of 8 for 75%. A
+// framework score is always a multiple of 12.5 with this catalog, and
+// no framework without evaluated controls earns a score.
 const SCANS = [
-  { id: 'a1b2c3d4-e5f6-4a5b-8c9d-001122334455', cloud_account_id: 'demo-account-id', status: 'DEMO_COMPLETED', progress: 100, vulnerabilities_found: 5, passed_checks: 4, failed_checks: 3, created_at: '2026-11-21T10:00:00Z', completed_at: '2026-11-21T10:04:00Z' },
-  { id: 'b2c3d4e5-f6a7-4b5c-9d0e-112233445566', cloud_account_id: 'prod-account-id', status: 'COMPLETED', progress: 100, vulnerabilities_found: 2, passed_checks: 12, failed_checks: 2, created_at: '2026-11-20T09:00:00Z', completed_at: '2026-11-20T09:05:00Z' },
+  { id: 'a1b2c3d4-e5f6-4a5b-8c9d-001122334455', cloud_account_id: 'demo-account-id', status: 'DEMO_COMPLETED', progress: 100, vulnerabilities_found: 5, passed_checks: 1, failed_checks: 7, created_at: '2026-11-21T10:00:00Z', completed_at: '2026-11-21T10:04:00Z' },
+  { id: 'b2c3d4e5-f6a7-4b5c-9d0e-112233445566', cloud_account_id: 'prod-account-id', status: 'COMPLETED', progress: 100, vulnerabilities_found: 2, passed_checks: 6, failed_checks: 2, created_at: '2026-11-20T09:00:00Z', completed_at: '2026-11-20T09:05:00Z' },
   { id: 'c3d4e5f6-a7b8-4c5d-0e1f-223344556677', cloud_account_id: 'demo-account-id', status: 'RUNNING', progress: 45, vulnerabilities_found: 0, passed_checks: 0, failed_checks: 0, created_at: '2026-11-22T00:00:00Z', completed_at: null },
 ];
 const TF_S3 = 'resource "aws_s3_bucket_public_access_block" "customer_invoice_uploads_temp_remediated" {\n  bucket = "customer-invoice-uploads-temp"\n\n  block_public_acls       = true\n  block_public_policy     = true\n  ignore_public_acls      = true\n  restrict_public_buckets = true\n}\n';
@@ -58,8 +63,13 @@ const VULNS = [
   { id: 'v-4', resource_type: 'VPC', resource_id: 'vpc-0a1b2c3d4e5f6a7b8', resource_name: 'prod-vpc', vulnerability_type: 'FLOW_LOGS_DISABLED', severity: 'HIGH', title: 'VPC Flow Logs Disabled', description: 'VPC prod-vpc has no flow logs enabled, so network traffic cannot be audited after an incident.', recommendation: 'Enable VPC flow logs to CloudWatch Logs for all production VPCs. Review the logs weekly.', terraform_fix: TF_S3, compliance_frameworks: ['CIS AWS 3.9'], cvss_score: 7.1, status: 'OPEN', evidence: {} },
   { id: 'v-5', resource_type: 'IAM', resource_id: 'AKIAIOSFODNN7EXAMPLE', resource_name: 'deploy-user', vulnerability_type: 'OLD_ACCESS_KEY', severity: 'MEDIUM', title: 'IAM Access Key Older Than 90 Days', description: 'Access key for deploy-user was created more than 90 days ago and has not been rotated.', recommendation: 'Rotate the access key and remove the old one. Then confirm the user can still deploy.', terraform_fix: '', compliance_frameworks: ['CIS AWS 1.4'], cvss_score: 5.0, status: 'OPEN', evidence: {} },
 ];
-const SUMMARY = { total_open_vulnerabilities: 5, average_cvss_score: 7.14, severity_distribution: { CRITICAL: 1, HIGH: 2, MEDIUM: 2, LOW: 0 }, resource_distribution: { S3: 3, VPC: 1, IAM: 1 } };
-const COMPLIANCE = { CIS: 68, PCI_DSS: 75, HIPAA: 80 };
+const SUMMARY = { total_open_vulnerabilities: 5, average_cvss_score: 6.94, severity_distribution: { CRITICAL: 1, HIGH: 2, MEDIUM: 2, LOW: 0 }, resource_distribution: { S3: 3, VPC: 1, IAM: 1 } };
+// (9.8 + 7.5 + 5.3 + 7.1 + 5.0) / 5 = 6.94 — the mean of the five
+// canned findings above, not a rounded guess.
+// Latest scan is the demo one, so the summary is its control-level CIS
+// score only: 1 of 8 controls pass. Other frameworks have no
+// control-level rows and earn no score.
+const COMPLIANCE = { CIS: 12.5 };
 const ACCOUNTS = [
   { id: 'demo-account-id', name: 'Demo AWS Account', provider: 'aws', is_active: true },
   { id: 'prod-account-id', name: 'Production AWS Account', provider: 'aws', is_active: true },

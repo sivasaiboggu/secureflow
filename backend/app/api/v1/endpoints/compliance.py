@@ -65,9 +65,17 @@ def get_compliance_summary(db: Session = Depends(get_db), current_user: User = D
         return {}
         
     checks = db.query(ComplianceCheck).filter(ComplianceCheck.scan_id == latest_scan.id).all()
+    # Control-level rows (one per CIS control, PASS or FAIL) are the
+    # score basis when a scan wrote them: finding-derived rows are all
+    # FAIL by construction, so scoring from them could never exceed 0%.
+    # Scans from before control-level rows existed have none, and fall
+    # back to all rows rather than showing nothing.
+    control_checks = [c for c in checks
+                      if isinstance(c.evidence, dict) and c.evidence.get("control_level")]
+    scored = control_checks if control_checks else checks
     checks_list = [
         {"framework": c.framework, "status": c.status}
-        for c in checks
+        for c in scored
     ]
-    
+
     return compliance_engine.calculate_scores(checks_list)

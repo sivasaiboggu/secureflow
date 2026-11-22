@@ -148,10 +148,13 @@ def seed_db(argv=None, env=None):
 
         # 5. Add historical Scan Record
         scan_id = str(uuid.uuid4())
-        # Counts must agree with the rows below: 7 findings, 7 failed
-        # checks, 0 passed checks. (They previously read 3/3/12, so the
-        # scans page, the findings page and the compliance overview
-        # disagreed with each other about the same seeded scan.)
+        # Counts must agree with the control-level rows below: the 7
+        # seeded findings violate 4 of the 8 CIS controls (1.2, 1.16,
+        # 2.1.5, 4.3) and pass the other 4 (1.8, 1.14, 2.1.1, 2.1.2),
+        # so the seeded scan is 4 passed / 4 failed. (The counts
+        # previously read 0/7, which scored the seeded scan 0% even
+        # though half the evaluated controls pass; the 7 finding-derived
+        # rows are all FAIL by construction and are detail, not score.)
         history_scan = Scan(
             id=scan_id,
             organization_id=org_id,
@@ -159,8 +162,8 @@ def seed_db(argv=None, env=None):
             status="COMPLETED",
             progress=100.0,
             vulnerabilities_found=7,
-            failed_checks=7,
-            passed_checks=0,
+            failed_checks=4,
+            passed_checks=4,
             created_at=utcnow() - datetime.timedelta(hours=2),
             completed_at=utcnow() - datetime.timedelta(hours=1.8)
         )
@@ -324,6 +327,65 @@ def seed_db(argv=None, env=None):
             )
         ]
         for c in checks:
+            db.add(c)
+
+        # Control-level CIS rows, one per catalog control — the same
+        # shape the scan worker writes (see app/tasks/scan_tasks.py
+        # step 4b). The 7 finding-derived rows above are all FAIL by
+        # construction; these 8 rows are the score basis. Passing
+        # controls were evaluated at account scope, so they carry the
+        # account id as the resource.
+        control_checks = [
+            ComplianceCheck(
+                id=str(uuid.uuid4()), scan_id=scan_id, framework="CIS", control_id="1.2",
+                title="Ensure multi-factor authentication (MFA) is enabled for all IAM users that have a password",
+                status="FAIL", resource_id="arn:aws:iam::account:admin-user-jenkins",
+                evidence={"control_level": True},
+            ),
+            ComplianceCheck(
+                id=str(uuid.uuid4()), scan_id=scan_id, framework="CIS", control_id="1.8",
+                title="Ensure IAM password policy requires minimum length of 14 or greater",
+                status="PASS", resource_id=acc_id,
+                evidence={"control_level": True},
+            ),
+            ComplianceCheck(
+                id=str(uuid.uuid4()), scan_id=scan_id, framework="CIS", control_id="1.14",
+                title="Ensure access keys are rotated every 90 days or less",
+                status="PASS", resource_id=acc_id,
+                evidence={"control_level": True},
+            ),
+            ComplianceCheck(
+                id=str(uuid.uuid4()), scan_id=scan_id, framework="CIS", control_id="1.16",
+                title="Ensure IAM policies that allow full '*:*' administrative privileges are not created",
+                status="FAIL", resource_id="arn:aws:ec2:us-east-1:i-07cb1294819d9b62a",
+                evidence={"control_level": True},
+            ),
+            ComplianceCheck(
+                id=str(uuid.uuid4()), scan_id=scan_id, framework="CIS", control_id="2.1.1",
+                title="Ensure all S3 buckets employ default server-side encryption",
+                status="PASS", resource_id=acc_id,
+                evidence={"control_level": True},
+            ),
+            ComplianceCheck(
+                id=str(uuid.uuid4()), scan_id=scan_id, framework="CIS", control_id="2.1.2",
+                title="Ensure S3 Bucket Policy forces secure transfer (HTTPS)",
+                status="PASS", resource_id=acc_id,
+                evidence={"control_level": True},
+            ),
+            ComplianceCheck(
+                id=str(uuid.uuid4()), scan_id=scan_id, framework="CIS", control_id="2.1.5",
+                title="Ensure S3 buckets block public write/read permissions",
+                status="FAIL", resource_id="arn:aws:s3:::customer-invoice-uploads-temp",
+                evidence={"control_level": True},
+            ),
+            ComplianceCheck(
+                id=str(uuid.uuid4()), scan_id=scan_id, framework="CIS", control_id="4.3",
+                title="Ensure VPC Flow Logs are enabled in all VPC networks",
+                status="FAIL", resource_id="arn:aws:ec2:us-east-1:123456789:vpc/vpc-0a88091176bfa2e82",
+                evidence={"control_level": True},
+            ),
+        ]
+        for c in control_checks:
             db.add(c)
             
         db.commit()

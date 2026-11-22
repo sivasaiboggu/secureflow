@@ -121,7 +121,7 @@ export const CloudAccounts: React.FC = () => {
               <input type="checkbox" checked={demo} onChange={e => setDemo(e.target.checked)} />
               Use sample data (demo). No AWS access or security assessment.
             </label>
-            <p style={{ color: 'var(--nexus-text-muted)', fontSize: 12, lineHeight: 1.6 }}>AWS only. Other providers are not ready. Live credentials are stored in the app database without application-level encryption. Use only a local test account until secret storage is hardened.</p>
+            <p style={{ color: 'var(--nexus-text-muted)', fontSize: 12, lineHeight: 1.6 }}>AWS only. Other providers are not ready. Live credentials are sealed with AES-256-GCM before they are stored, under the CLOUD_CREDENTIALS_KEY in the backend .env — without that key, real accounts cannot be registered. Use a local test account first.</p>
             <div>
               <label htmlFor="aws-access-key" style={{ fontSize: 12, color: 'var(--nexus-text-muted)' }}>AWS access key ID</label>
               <input id="aws-access-key" aria-label="AWS access key ID" required={!demo} disabled={demo} value={accessKey} onChange={(e) => setAccessKey(e.target.value)}

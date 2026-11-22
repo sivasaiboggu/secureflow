@@ -5,7 +5,14 @@
   to { transform: rotate(360deg); }
 }
 
-/* ─── Nexus Design Tokens ─── */
+/* ─── Nexus Design Tokens ───
+   Canonical colour spec is OKLCH (see frontend/src/theme/tokens.json
+   and docs/design-tokens-1.0.7.md); the values below are the hex
+   fallbacks for the same colours. One accent: lime #E7FF72 in dark,
+   oklch(0.955 0.167 117.8). Surfaces are solid, never frosted.
+   Light-mode text colours were deepened in 1.0.7 so every text pair
+   passes WCAG AA (4.5:1) on both the paper background and white cards:
+   accent text #46700E, high #C2410C, medium #8A6100, low #166534. */
 :root {
   --nexus-primary: #E7FF72;
   --nexus-secondary: #06B6D4;
@@ -65,8 +72,8 @@
   --nexus-elevated-bg: rgba(23, 27, 34, 0.06);
   --nexus-code-bg: rgba(23, 27, 34, 0.07);
   --nexus-code-text: #2F6B12;
-  --nexus-accent-text: #4D7C0F;
-  --nexus-accent-bar: #65A30D;
+  --nexus-accent-text: #46700E;
+  --nexus-accent-bar: #4D7C0F;
   --nexus-cyan-text: #0E7490;
   --nexus-header-bg: #ffffff;
   --nexus-overlay: rgba(23, 27, 34, 0.55);
@@ -74,9 +81,9 @@
   --nexus-focus-ring: 0 0 0 3px rgba(101, 163, 13, 0.25);
   --nexus-shadow: rgba(23,27,34,0.10) 0px 18px 60px 0px, rgba(255,255,255,0.9) 0px 1px 0px 0px inset;
   --sev-critical: #DC2626;
-  --sev-high: #EA580C;
-  --sev-medium: #CA8A04;
-  --sev-low: #16A34A;
+  --sev-high: #C2410C;
+  --sev-medium: #8A6100;
+  --sev-low: #166534;
 }
 
 /* ─── Reset & Base ─── */

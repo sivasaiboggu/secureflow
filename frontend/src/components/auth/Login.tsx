@@ -80,11 +80,18 @@ export const Login: React.FC = () => {
 
         </div>
 
-          {/* Bottom section labels — decorative, not navigation. */}
-        <div style={styles.tabRow} aria-hidden="true">
-          {['Platform', 'Architecture', 'Metrics', 'Logs'].map((t, i) => (
-            <div key={t} style={{ ...styles.tab, ...(i === 0 ? styles.tabActive : {}) }}>{t}</div>
-          ))}
+          {/* Bottom facts strip — the ledger line, repeated from the
+              dashboard: a hairline rule, a 2px lime segment, and real
+              numbers from the product (7 AWS scanners, 8 CIS controls
+              evaluated per scan, Terraform fixes included). The old
+              row here was four decorative tab labels that did nothing. */}
+        <div style={styles.factsStrip}>
+          <div style={styles.factsRule} />
+          <p style={styles.factsText}>
+            <span style={styles.factsNumber}>7</span> AWS SCANNERS&nbsp;&nbsp;·&nbsp;&nbsp;
+            <span style={styles.factsNumber}>8</span> CIS CONTROLS PER SCAN&nbsp;&nbsp;·&nbsp;&nbsp;
+            TERRAFORM FIXES INCLUDED
+          </p>
         </div>
       </div>
 
@@ -241,25 +248,26 @@ const styles: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase' as const,
     color: 'var(--nexus-text-muted)',
   },
-  tabRow: {
-    display: 'flex',
-    gap: 4,
-    alignItems: 'center',
-    flexWrap: 'wrap' as const,
+  factsStrip: {
+    borderTop: '0.8px solid var(--nexus-border-strong)',
+    paddingTop: 16,
   },
-  tab: {
+  factsRule: {
+    width: 32,
+    height: 2,
+    background: 'var(--nexus-accent-bar)',
+    marginBottom: 12,
+  },
+  factsText: {
     fontFamily: '"Geist Mono", monospace',
-    fontSize: 11,
-    letterSpacing: '0.12em',
-    textTransform: 'uppercase' as const,
+    fontSize: 10,
+    letterSpacing: '0.14em',
     color: 'var(--nexus-text-muted)',
-    padding: '6px 14px',
-    borderRadius: 0,
-    borderBottom: '0.8px solid transparent',
+    margin: 0,
   },
-  tabActive: {
+  factsNumber: {
     color: 'var(--nexus-text-primary)',
-    borderBottom: '0.8px solid var(--nexus-border-bright)',
+    fontWeight: 700,
   },
   formPanel: {
     flex: '0 0 420px',

@@ -60,6 +60,18 @@ CIS_AWS_CONTROLS = {
     }
 }
 
+def _control_matches(framework: str, control_id: str) -> bool:
+    """True when a finding's framework string names this control.
+
+    Framework strings read "CIS AWS 2.1.2": the family is the first
+    token and the control id is the last. Substring matching wrongly failed control 1.2 on a 2.1.2
+    finding ("1.2" sits inside "2.1.2") and on "PCI-DSS 1.2", a
+    different framework's control that happens to share the number.
+    """
+    parts = framework.split()
+    return len(parts) >= 2 and parts[0] == "CIS" and parts[-1] == control_id
+
+
 class CISBenchmarkEvaluator:
     """Validator mapping scanning rules to official CIS foundation benchmark controls"""
     
@@ -84,7 +96,7 @@ class CISBenchmarkEvaluator:
             for f in findings:
                 frameworks = f.get("compliance_frameworks", [])
                 for fw in frameworks:
-                    if cid in fw:
+                    if _control_matches(fw, cid):
                         failed = True
                         violating_resources.append(f["resource_id"])
                         

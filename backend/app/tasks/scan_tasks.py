@@ -14,6 +14,7 @@ from app.scanners.aws.lambda_scanner import LambdaScanner
 from app.scanners.aws.vpc_scanner import VPCScanner
 from app.scanners.aws.cloudtrail_scanner import CloudTrailScanner
 from app.services.ml_service import ml_service
+from app.compliance.frameworks.cis_benchmark import cis_evaluator
 
 from app.security.credential_store import open_credentials
 
@@ -171,10 +172,10 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
             db.merge(vuln_obj)
             saved_vulnerabilities.append(vuln_obj)
             
-        # 4. Map and save ComplianceChecks
-        passed_checks = 0
-        failed_checks = 0
-        
+        # 4. Map and save ComplianceChecks. The rows below are
+        # per-resource evidence: one row per (finding, framework), and
+        # every one of them is a FAIL, because a check only exists here
+        # when something failed. They are the detail, not the score.
         for check in compliance_checks:
             check_obj = ComplianceCheck(
                 id=str(uuid.uuid4()),
@@ -187,10 +188,42 @@ def run_cloud_scan_task(self, scan_id: str, cloud_account_id: str, organization_
                 evidence={**check["evidence"], "scan_mode": credentials.get("scan_mode", "real"), "synthetic": credentials.get("scan_mode") == "demo"}
             )
             db.add(check_obj)
-            if check["status"] == "PASS":
+
+        # 4b. Control-level CIS evaluation. A compliance score is a pass
+        # rate over evaluated controls, so each of the 8 CIS controls
+        # earns exactly one row: PASS when no finding violates it, FAIL
+        # with the violating resources. These rows are what the scan's
+        # passed/failed counters and the compliance summary count. Without
+        # this step every scan scored 0% by construction, because no PASS
+        # row could ever exist: the finding-derived rows above are all
+        # FAIL. A demo scan evaluates to 1 of 8 passing (12.5%).
+        cis_result = cis_evaluator.evaluate_compliance(findings)
+        passed_checks = 0
+        failed_checks = 0
+        for control in cis_result["passed_controls"] + cis_result["failed_controls"]:
+            is_pass = control["status"] == "PASS"
+            if is_pass:
                 passed_checks += 1
             else:
                 failed_checks += 1
+            violating = sorted(set(control.get("violating_resources") or []))
+            db.add(ComplianceCheck(
+                id=str(uuid.uuid4()),
+                scan_id=scan_id,
+                framework="CIS",
+                control_id=control["control_id"],
+                title=control["title"],
+                status=control["status"],
+                # A passing control has no violating resource; it was
+                # evaluated at account scope.
+                resource_id=violating[0] if violating else cloud_account_id,
+                evidence={
+                    "control_level": True,
+                    "scan_mode": credentials.get("scan_mode", "real"),
+                    "synthetic": credentials.get("scan_mode") == "demo",
+                    **({"violating_resources": violating} if violating else {}),
+                },
+            ))
                 
         # 5. Save an in-app alert for critical findings
         if critical_count > 0:
