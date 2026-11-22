@@ -45,11 +45,11 @@ export const PredictiveAnalytics: React.FC = () => {
     );
 
     if (type === 'log') {
-      const isThret = data.is_threat;
+      const isThreat = data.is_threat;
       return (
-        <div style={{ background: isThret ? 'rgba(239,68,68,0.1)' : 'rgba(74,222,128,0.1)', border: `0.8px solid ${isThret ? 'rgba(239,68,68,0.3)' : 'rgba(74,222,128,0.3)'}`, borderRadius: 10, padding: '18px 20px' }}>
-          <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.22em', color: isThret ? 'var(--sev-critical)' : 'var(--sev-low)', marginBottom: 8 }}>
-            {isThret ? 'REVIEW FLAG' : 'NO RULE FLAG - NOT PROOF OF SAFETY'}
+        <div style={{ background: isThreat ? 'rgba(239,68,68,0.1)' : 'rgba(74,222,128,0.1)', border: `0.8px solid ${isThreat ? 'rgba(239,68,68,0.3)' : 'rgba(74,222,128,0.3)'}`, borderRadius: 10, padding: '18px 20px' }}>
+          <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.22em', color: isThreat ? 'var(--sev-critical)' : 'var(--sev-low)', marginBottom: 8 }}>
+            {isThreat ? 'REVIEW FLAG' : 'NO RULE FLAG - NOT PROOF OF SAFETY'}
           </p>
           <p style={{ fontFamily: '"Geist", sans-serif', fontSize: 15, fontWeight: 500, color: 'var(--nexus-text-primary)', marginBottom: 4 }}>
             {data.classification}
@@ -104,7 +104,7 @@ export const PredictiveAnalytics: React.FC = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 20 }}>
         {/* Panel 1: NLP Log Classifier */}
-        <div style={{ background: 'var(--nexus-surface)', backdropFilter: 'blur(24px)', border: '0.8px solid var(--nexus-border)', borderRadius: 12, padding: 28, display: 'flex', flexDirection: 'column' as const, gap: 20 }}>
+        <div style={{ background: 'var(--nexus-surface)', border: '0.8px solid var(--nexus-border)', borderRadius: 12, padding: 28, display: 'flex', flexDirection: 'column' as const, gap: 20 }}>
           <div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
               <span style={{ background: 'rgba(6,182,212,0.15)', color: 'var(--nexus-cyan-text)', border: '0.8px solid rgba(6,182,212,0.3)', borderRadius: 6, padding: '2px 8px', fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.14em' }}>NLP</span>
@@ -140,7 +140,7 @@ export const PredictiveAnalytics: React.FC = () => {
         </div>
 
         {/* Panel 2: Anomaly Detection */}
-        <div style={{ background: 'var(--nexus-surface)', backdropFilter: 'blur(24px)', border: '0.8px solid var(--nexus-border)', borderRadius: 12, padding: 28, display: 'flex', flexDirection: 'column' as const, gap: 20 }}>
+        <div style={{ background: 'var(--nexus-surface)', border: '0.8px solid var(--nexus-border)', borderRadius: 12, padding: 28, display: 'flex', flexDirection: 'column' as const, gap: 20 }}>
           <div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
               <span style={{ background: 'rgba(141,255,124,0.12)', color: 'var(--nexus-code-text)', border: '0.8px solid rgba(141,255,124,0.3)', borderRadius: 6, padding: '2px 8px', fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.14em' }}>PyTorch</span>

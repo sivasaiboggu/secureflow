@@ -4,7 +4,7 @@ This document describes how to deploy the SecureFlow CSPM platform in staging an
 
 ---
 
-## 🐋 Docker Compose Deployment (Staging)
+## Docker Compose Deployment (Staging)
 
 The platform is fully containerized and runs using a single Docker Compose stack:
 
@@ -26,7 +26,7 @@ LOG_LEVEL=INFO
 
 ---
 
-## ☸️ Kubernetes Deployment (Production)
+## Kubernetes Deployment (Production)
 
 Deployments are mapped inside `./infrastructure/kubernetes/`:
 

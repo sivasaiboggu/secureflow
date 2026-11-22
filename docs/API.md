@@ -4,7 +4,7 @@ SecureFlow exposes a RESTful API and Prometheus metrics tracking channels. All e
 
 ---
 
-## 🔒 Authentication & Authorization
+## Authentication & Authorization
 
 Authentication is managed via OAuth2 password flows yielding JWT tokens. Include the returned token inside the HTTP `Authorization` header of all subsequent API calls:
 
@@ -37,7 +37,7 @@ username=admin@secureflow.io&password=<your-password>
 
 ---
 
-## 🖥️ Cloud Scanner Posture
+## Cloud Scanner Posture
 
 ### 1. Register Cloud Account Credentials
 * **Endpoint**: `POST /api/v1/scans/cloud-accounts`
@@ -76,7 +76,7 @@ username=admin@secureflow.io&password=<your-password>
 
 ---
 
-## 🧠 Threat Intelligence & Remediation
+## Threat Intelligence & Remediation
 
 ### 1. Apply Terraform Auto-Remediation
 * **Endpoint**: `POST /api/v1/vulnerabilities/remediate`

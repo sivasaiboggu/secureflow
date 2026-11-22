@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "SecureFlow"
     DEBUG: bool = True
-    VERSION: str = "1.0.5"
+    VERSION: str = "1.0.6"
     
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/secureflow"
@@ -76,6 +76,10 @@ class Settings(BaseSettings):
                 or self.SECRET_KEY.strip().lower() in {
                     "your-super-secret-key-change-this-in-production",
                     "change-this-secret-key-in-production",
+                    # The placeholder shipped in .env.example. It is the
+                    # same string for everyone who copies the file, so it
+                    # must never pass as a production key.
+                    "paste-your-own-64-hex-character-secret-here",
                 }
             ):
                 raise ValueError(

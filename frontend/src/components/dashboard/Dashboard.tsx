@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Grid, Skeleton } from '@mui/material';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid } from 'recharts';
-import { motion, type Variants } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
@@ -25,19 +25,14 @@ interface AnalyticsSummary {
   resource_distribution: Record<string, number>;
 }
 
-const containerVariants: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.07 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } },
-};
+/* framer-motion is used here for one thing only: the compliance bar
+   fills, which are state changes (a score arriving). There is no
+   entrance animation on this page: the staggered entrance variants were
+   removed per the design playbook — the dashboard renders its final
+   state immediately. */
 
 const glassPanel: React.CSSProperties = {
   background: 'var(--nexus-surface)',
-  backdropFilter: 'blur(24px)',
   border: '0.8px solid var(--nexus-border)',
   borderRadius: 12,
 };
@@ -51,32 +46,21 @@ const monoLabel: React.CSSProperties = {
 };
 
 const StatCard: React.FC<{ label: string; value: string | number; sub?: string; accent?: string }> = ({ label, value, sub, accent = 'var(--nexus-accent-text)' }) => (
-  <motion.div
-    variants={itemVariants}
-    whileHover={{ y: -2 }}
-    transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-    className="nexus-lift"
+  <div
     style={{
       ...glassPanel,
       padding: '24px',
       position: 'relative',
       overflow: 'hidden',
+      borderTop: `2px solid ${accent}`,
     }}
   >
-    <div style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 2,
-      background: `linear-gradient(90deg, transparent, color-mix(in srgb, ${accent} 25%, transparent), transparent)`,
-    }} />
     <p style={{ ...monoLabel, marginBottom: 12 }}>{label}</p>
     <p style={{ fontFamily: '"Geist", sans-serif', fontSize: 40, fontWeight: 600, letterSpacing: '-0.04em', color: accent, margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
       {value}
     </p>
     {sub && <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'var(--nexus-text-faint)', marginTop: 8, letterSpacing: '0.1em' }}>{sub}</p>}
-  </motion.div>
+  </div>
 );
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -91,26 +75,29 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+/* Loading state: static blocks, no travelling sheen. MUI Skeleton's
+   default animation is a moving highlight; animation={false} renders
+   plain blocks in the panel colour until the first load lands. */
 const DashboardSkeleton: React.FC = () => (
   <div style={{ padding: '32px', maxWidth: 1400, margin: '0 auto' }}>
-    <Skeleton variant="text" width={180} height={16} sx={{ mb: 1 }} />
-    <Skeleton variant="text" width={320} height={44} sx={{ mb: 5 }} />
+    <Skeleton animation={false} variant="text" width={180} height={16} sx={{ mb: 1 }} />
+    <Skeleton animation={false} variant="text" width={320} height={44} sx={{ mb: 5 }} />
     <Grid container spacing={2} sx={{ mb: 4 }}>
       {[0, 1, 2, 3].map((i) => (
         <Grid item xs={12} sm={6} md={3} key={i}>
-          <Skeleton variant="rounded" height={132} />
+          <Skeleton animation={false} variant="rounded" height={132} />
         </Grid>
       ))}
     </Grid>
     <Grid container spacing={3} sx={{ mb: 4 }}>
       <Grid item xs={12} md={6}>
-        <Skeleton variant="rounded" height={332} />
+        <Skeleton animation={false} variant="rounded" height={332} />
       </Grid>
       <Grid item xs={12} md={6}>
-        <Skeleton variant="rounded" height={332} />
+        <Skeleton animation={false} variant="rounded" height={332} />
       </Grid>
     </Grid>
-    <Skeleton variant="rounded" height={116} />
+    <Skeleton animation={false} variant="rounded" height={116} />
   </div>
 );
 
@@ -232,9 +219,9 @@ export const Dashboard: React.FC = () => {
     : [];
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="dashboard-page" style={{ padding: '32px', maxWidth: 1400, margin: '0 auto' }}>
+    <div className="dashboard-page" style={{ padding: '32px', maxWidth: 1400, margin: '0 auto' }}>
       {/* Header */}
-      <motion.div variants={itemVariants} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40, flexWrap: 'wrap', gap: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <p style={{ ...monoLabel, marginBottom: 8 }}>SECURITY POSTURE</p>
           <h1 style={{ fontFamily: '"Geist", sans-serif', fontSize: 32, fontWeight: 500, letterSpacing: '-0.04em', color: 'var(--nexus-text-primary)', margin: 0 }}>
@@ -256,7 +243,7 @@ export const Dashboard: React.FC = () => {
             Refresh
           </button>
         </div>
-      </motion.div>
+      </div>
 
       {/* Inline refresh failure — data from the last good load stays visible */}
       {error && hasData && (
@@ -296,7 +283,7 @@ export const Dashboard: React.FC = () => {
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* Severity Distribution */}
         <Grid item xs={12} md={6}>
-          <motion.div variants={itemVariants} style={{ ...glassPanel, padding: '24px' }}>
+          <div style={{ ...glassPanel, padding: '24px' }}>
             <p style={{ ...monoLabel, marginBottom: 6 }}>ANALYSIS</p>
             <h3 style={{ fontFamily: '"Geist", sans-serif', fontSize: 18, fontWeight: 500, letterSpacing: '-0.03em', color: 'var(--nexus-text-primary)', marginBottom: 24 }}>Severity Distribution</h3>
             {stats.totalVulnerabilities === 0 ? (
@@ -324,12 +311,12 @@ export const Dashboard: React.FC = () => {
               </BarChart>
             </ResponsiveContainer>
             )}
-          </motion.div>
+          </div>
         </Grid>
 
         {/* Compliance Trend */}
         <Grid item xs={12} md={6}>
-          <motion.div variants={itemVariants} style={{ ...glassPanel, padding: '24px' }}>
+          <div style={{ ...glassPanel, padding: '24px' }}>
             <p style={{ ...monoLabel, marginBottom: 6 }}>TREND</p>
             <h3 style={{ fontFamily: '"Geist", sans-serif', fontSize: 18, fontWeight: 500, letterSpacing: '-0.03em', color: 'var(--nexus-text-primary)', marginBottom: 24 }}>Compliance Over Time</h3>
             {trendData.length < 2 ? (
@@ -343,26 +330,22 @@ export const Dashboard: React.FC = () => {
               {/* Right margin 30, not 8: the last date tick label ran past
                   the chart edge and rendered clipped ("11/21/202"). */}
               <AreaChart data={trendData} margin={{ top: 4, right: 30, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="complianceGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--nexus-accent-bar)" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="var(--nexus-accent-bar)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid strokeDasharray="2 4" stroke="var(--nexus-border-soft)" />
                 <XAxis dataKey="date" tick={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, fill: 'var(--nexus-text-muted)' }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} tick={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, fill: 'var(--nexus-text-faint)' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="score" stroke="var(--nexus-accent-bar)" strokeWidth={2} fill="url(#complianceGrad)" isAnimationActive={false} dot={{ fill: 'var(--nexus-accent-bar)', r: 4, strokeWidth: 0 }} />
+                {/* Flat area fill, not a gradient: the area under the line
+                    is the same accent at 8% opacity. */}
+                <Area type="monotone" dataKey="score" stroke="var(--nexus-accent-bar)" strokeWidth={2} fill="var(--nexus-accent-bar)" fillOpacity={0.08} isAnimationActive={false} dot={{ fill: 'var(--nexus-accent-bar)', r: 4, strokeWidth: 0 }} />
               </AreaChart>
             </ResponsiveContainer>
             )}
-          </motion.div>
+          </div>
         </Grid>
       </Grid>
 
       {/* Bottom: severity breakdown list */}
-      <motion.div variants={itemVariants} style={{ ...glassPanel, padding: '24px' }}>
+      <div style={{ ...glassPanel, padding: '24px' }}>
         <p style={{ ...monoLabel, marginBottom: 20 }}>FINDING BREAKDOWN</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
           {[
@@ -371,7 +354,7 @@ export const Dashboard: React.FC = () => {
             { label: 'MEDIUM', count: stats.mediumCount, color: 'var(--sev-medium)', bg: 'rgba(234,179,8,0.1)' },
             { label: 'LOW', count: stats.lowCount, color: 'var(--sev-low)', bg: 'rgba(34,197,94,0.1)' },
           ].map((item) => (
-            <div key={item.label} className="nexus-lift" style={{ background: item.bg, border: `0.8px solid color-mix(in srgb, ${item.color} 35%, transparent)`, borderRadius: 10, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div key={item.label} style={{ background: item.bg, border: `0.8px solid color-mix(in srgb, ${item.color} 35%, transparent)`, borderRadius: 10, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: '0.14em', color: item.color }}>{item.label}</span>
               <span style={{ fontFamily: '"Geist", sans-serif', fontSize: 28, fontWeight: 600, letterSpacing: '-0.03em', color: item.color }}>{item.count}</span>
             </div>
@@ -389,11 +372,11 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         )}
-      </motion.div>
+      </div>
       {/* Compliance overview + top findings */}
       <Grid container spacing={3} sx={{ mt: 4 }}>
         <Grid item xs={12} md={6}>
-          <motion.div variants={itemVariants} style={{ ...glassPanel, padding: '24px', height: '100%' }}>
+          <div style={{ ...glassPanel, padding: '24px', height: '100%' }}>
             <p style={{ ...monoLabel, marginBottom: 6 }}>COMPLIANCE</p>
             <h3 style={{ fontFamily: '"Geist", sans-serif', fontSize: 18, fontWeight: 500, letterSpacing: '-0.03em', color: 'var(--nexus-text-primary)', marginBottom: 20 }}>Framework Overview</h3>
             {(!compliance || Object.keys(compliance).length === 0) ? (
@@ -420,10 +403,10 @@ export const Dashboard: React.FC = () => {
                   );
                 })
             )}
-          </motion.div>
+          </div>
         </Grid>
         <Grid item xs={12} md={6}>
-          <motion.div variants={itemVariants} style={{ ...glassPanel, padding: '24px', height: '100%' }}>
+          <div style={{ ...glassPanel, padding: '24px', height: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20 }}>
               <div>
                 <p style={{ ...monoLabel, marginBottom: 6 }}>ACT NOW</p>
@@ -453,9 +436,9 @@ export const Dashboard: React.FC = () => {
                 </Link>
               ))
             )}
-          </motion.div>
+          </div>
         </Grid>
       </Grid>
-    </motion.div>
+    </div>
   );
 };

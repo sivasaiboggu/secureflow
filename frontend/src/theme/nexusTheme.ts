@@ -7,8 +7,9 @@ export type NexusMode = 'dark' | 'light';
  * brand in both modes: it stays the filled-button colour (dark ink on lime
  * reads on light and dark alike), while `primary.main` — used for text,
  * icons and spinners — is a deeper lime in light mode so it stays readable.
- * Glass surfaces are expressed through the CSS tokens in index.css so plain
- * inline styles and MUI overrides share one source of truth.
+ * Solid surfaces are expressed through the CSS tokens in index.css so plain
+ * inline styles and MUI overrides share one source of truth. No surface
+ * uses backdrop blur: the playbook bans frosted glass.
  */
 export const buildNexusTheme = (mode: NexusMode): Theme => {
   const dark = mode === 'dark';
@@ -47,7 +48,6 @@ export const buildNexusTheme = (mode: NexusMode): Theme => {
           root: {
             backgroundImage: 'none',
             backgroundColor: 'var(--nexus-surface)',
-            backdropFilter: 'blur(24px)',
             border: '0.8px solid var(--nexus-border)',
             boxShadow: 'var(--nexus-shadow)',
           },
@@ -97,7 +97,6 @@ export const buildNexusTheme = (mode: NexusMode): Theme => {
             fontFamily: '"Geist", sans-serif',
             border: '0.8px solid var(--nexus-border)',
             backgroundColor: 'var(--nexus-surface)',
-            backdropFilter: 'blur(24px)',
           },
         },
       },

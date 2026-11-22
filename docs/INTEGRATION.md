@@ -4,7 +4,7 @@ This document describes how to configure external APIs, cloud provider credentia
 
 ---
 
-## 🔑 Cloud Providers Credential Maps
+## Cloud Providers Credential Maps
 
 SecureFlow scans AWS, GCP, and Azure targets. Use the environment variables below inside your system or `.env` files to bind authentication parameters:
 
@@ -32,7 +32,7 @@ Scanners audit Azure Storage containers, Virtual Machine disk encryptions, and A
 
 ---
 
-## 🔔 Outbound Notification Channels Integrations
+## Outbound Notification Channels Integrations
 
 Vulnerabilities classified as CRITICAL or HIGH automatically push warnings to alerts sinks.
 
@@ -69,7 +69,7 @@ SMTP_FROM=alerts@secureflow.io
 
 ---
 
-## 🧪 Browser Testing Instructions (Microsoft Edge)
+## Browser Testing Instructions (Microsoft Edge)
 
 1. Open **Microsoft Edge**.
 2. Navigate to the local client address: `http://localhost:5173`.

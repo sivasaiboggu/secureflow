@@ -4,7 +4,7 @@ This document describes the design principles and data pipeline details of the *
 
 ---
 
-## 🏗️ Design System
+## Design System
 
 SecureFlow is built as a multi-tenant compliance auditor separating storage access and telemetry scans.
 

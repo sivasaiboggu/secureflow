@@ -4,7 +4,7 @@ Welcome to the SecureFlow project. Follow these guidelines to configure local de
 
 ---
 
-## 🛠️ Local Development Setup
+## Local Development Setup
 
 1. **Clone and Setup Virtual Environment**:
    ```bash
@@ -34,7 +34,7 @@ Welcome to the SecureFlow project. Follow these guidelines to configure local de
 
 ---
 
-## 🧪 Testing Guidelines
+## Testing Guidelines
 
 Before committing code, verify all changes pass python validation checks:
 

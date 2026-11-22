@@ -32,6 +32,17 @@ class CredentialStoreTests(unittest.TestCase):
     def test_missing_invalid_key_never_saves_plaintext(self):
         for key in ['', 'bad',base64.b64encode(b'short').decode()]:
             with patch.dict(os.environ,{'CLOUD_CREDENTIALS_KEY':key}),self.assertRaises(CredentialStorageError):self.seal()
+
+    def test_missing_key_error_names_the_variable_and_where_it_goes(self):
+        # A bare "not configured" leaves the operator guessing; the error
+        # must name the variable, the file and what the value looks like.
+        with patch.dict(os.environ, {'CLOUD_CREDENTIALS_KEY': ''}):
+            with self.assertRaises(CredentialStorageError) as ctx:
+                self.seal()
+        message = str(ctx.exception)
+        self.assertIn('CLOUD_CREDENTIALS_KEY', message)
+        self.assertIn('.env', message)
+        self.assertIn('base64', message)
     def test_demo_discards_secrets_without_a_key(self):
         with patch.dict(os.environ,{'CLOUD_CREDENTIALS_KEY':''}):
             self.assertEqual(seal_credentials({**CREDS,'scan_mode':'demo'},'a','o','aws'),{'scan_mode':'demo'})

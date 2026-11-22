@@ -41,10 +41,10 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
-const ProgressBar: React.FC<{ value: number; active?: boolean }> = ({ value, active = false }) => (
+const ProgressBar: React.FC<{ value: number }> = ({ value }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
     <div style={{ flex: 1, height: 6, background: 'var(--nexus-elevated-bg)', borderRadius: 4, overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.25)' }}>
-      <div className={active ? 'nexus-progress-active' : undefined} style={{ height: '100%', width: `${value}%`, background: value === 100 ? '#E7FF72' : '#06B6D4', borderRadius: 4, transition: 'width 500ms ease' }} />
+      <div style={{ height: '100%', width: `${value}%`, background: value === 100 ? '#E7FF72' : '#06B6D4', borderRadius: 4, transition: 'width 500ms ease' }} />
     </div>
     <span style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, color: 'var(--nexus-text-muted)', minWidth: 32 }}>{Math.round(value)}%</span>
   </div>
@@ -138,7 +138,7 @@ export const ScanList: React.FC = () => {
 
       <p role="note" style={{ color: 'var(--nexus-text-body)', lineHeight: 1.7, fontSize: 13, marginBottom: 20 }}>Demo results are sample data, never a verified cloud assessment. Failed scans have no complete result. A completed scan covers only the implemented checks, not a full compliance audit.</p>
       {/* Scans Table */}
-      <div style={{ background: 'var(--nexus-surface)', backdropFilter: 'blur(24px)', border: '0.8px solid var(--nexus-border)', borderRadius: 12, overflowX: 'auto' }}>
+      <div style={{ background: 'var(--nexus-surface)', border: '0.8px solid var(--nexus-border)', borderRadius: 12, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '0.8px solid var(--nexus-border-soft)' }}>
@@ -169,7 +169,7 @@ export const ScanList: React.FC = () => {
                   <StatusBadge status={scan.status} />
                 </td>
                 <td style={{ padding: '16px 20px', minWidth: 160 }}>
-                  <ProgressBar value={scan.progress} active={scan.status === 'RUNNING'} />
+                  <ProgressBar value={scan.progress} />
                 </td>
                 <td style={{ padding: '16px 20px' }}>
                   <span style={{ fontFamily: '"Geist", sans-serif', fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', color: scan.vulnerabilities_found > 0 ? 'var(--sev-high)' : 'var(--sev-low)' }}>
@@ -192,7 +192,7 @@ export const ScanList: React.FC = () => {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
           onClick={() => setShowModal(false)}
-          style={{ position: 'fixed', inset: 0, background: 'var(--nexus-overlay)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: 'var(--nexus-overlay)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <motion.div
             role="dialog" aria-modal="true" aria-label="Start cloud scan"

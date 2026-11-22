@@ -7,7 +7,7 @@ const isLocalMachine = ['localhost', '127.0.0.1', '::1'].includes(window.locatio
 // must be given VITE_API_URL explicitly - falling back to 127.0.0.1 there
 // would call the visitor's own computer and fail misleadingly.
 export const apiBaseUrl: string | null =
-  configuredUrl ?? (isLocalMachine ? 'http://127.0.0.1:8080/api/v1' : null);
+  configuredUrl ?? (isLocalMachine ? 'http://127.0.0.1:8000/api/v1' : null);
 
 export const apiUnavailableReason: string | null =
   apiBaseUrl === null

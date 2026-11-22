@@ -19,7 +19,15 @@ def _key():
             raise ValueError()
         return raw
     except (ValueError, TypeError):
-        raise CredentialStorageError('Cloud credential storage key is not configured correctly.') from None
+        # The operator is the only person who can fix this, and only with
+        # the variable named: say which one, what it holds and where it
+        # goes, instead of a bare "not configured".
+        raise CredentialStorageError(
+            'Cloud credential storage key is not configured correctly. '
+            'Set CLOUD_CREDENTIALS_KEY in the backend .env to a base64-encoded '
+            'random 32-byte key (see .env.example for the generator command) '
+            'and restart the backend.'
+        ) from None
 
 
 def _context(account_id, organization_id, provider):

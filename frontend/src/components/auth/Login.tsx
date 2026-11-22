@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useMediaQuery } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 
@@ -8,6 +9,9 @@ export const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  // Below 768px the two-column layout stacks: the 420px form column
+  // used to squeeze the brand panel and overflow a phone viewport.
+  const narrow = useMediaQuery('(max-width: 768px)');
 
   // A valid session already exists: never show the sign-in form to a
   // signed-in user (an expired token is cleared by the API interceptor
@@ -38,17 +42,20 @@ export const Login: React.FC = () => {
       navigate('/dashboard');
     } catch (err: any) {
       const detail = err.response?.data?.detail;
-      setError(detail || 'Connection failed. Ensure the backend is running on port 8080.');
+      setError(detail || 'Connection failed. Ensure the backend is running on port 8000.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={styles.root}>
+    <div style={{ ...styles.root, ...(narrow ? { flexDirection: 'column' as const } : {}) }}>
       {/* Left brand panel */}
-      <div style={styles.brandPanel}>
-        <div style={styles.brandContent}>
+      <div style={{
+        ...styles.brandPanel,
+        ...(narrow ? { flex: 'none', padding: '32px 24px 24px', borderRight: 'none', borderBottom: '0.8px solid var(--nexus-border-soft)' } : {}),
+      }}>
+        <div style={{ ...styles.brandContent, ...(narrow ? { paddingTop: 8, gap: 24 } : {}) }}>
           {/* Logo mark */}
           <div style={styles.logoMark}>
             <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
@@ -60,16 +67,15 @@ export const Login: React.FC = () => {
 
           <div style={styles.brandTag}>NEXUS SECUREFLOW</div>
 
-          <h1 style={styles.displayText}>
-            Security<br />
-            <span style={{ color: '#E7FF72' }}>powered by</span><br />
-            intelligence.
+          <h1 style={{ ...styles.displayText, ...(narrow ? { fontSize: 'clamp(40px, 11vw, 48px)' } : {}) }}>
+            Cloud security<br />
+            <span style={{ color: '#E7FF72' }}>posture, in</span><br />
+            one place.
           </h1>
 
           <p style={styles.brandSub}>
-            EMBED ULTRA-FAST, CONTEXT-AWARE CLOUD<br />
-            SECURITY INTO YOUR ARCHITECTURE WITH<br />
-            OUR LASER-FOCUSED POSTURE ENGINE.
+            SCAN YOUR CLOUD ACCOUNTS, REVIEW THE FINDINGS,<br />
+            AND TRACK COMPLIANCE FROM ONE DASHBOARD.
           </p>
 
         </div>
@@ -83,11 +89,11 @@ export const Login: React.FC = () => {
       </div>
 
       {/* Right login form */}
-      <div style={styles.formPanel}>
+      <div style={{
+        ...styles.formPanel,
+        ...(narrow ? { flex: 'none', width: '100%', padding: '32px 24px 48px' } : {}),
+      }}>
         <div style={styles.formCard}>
-          {/* Card gradient shell */}
-          <div style={styles.cardShell} />
-
           <div style={styles.cardInner}>
             <div style={styles.formLogo}>
               <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
@@ -96,9 +102,9 @@ export const Login: React.FC = () => {
               </svg>
             </div>
 
-            <p style={styles.formMono}>NEXUS IDENTITY VERIFICATION</p>
-            <h2 style={styles.formTitle}>Initialize System</h2>
-            <p style={styles.formSub}>Authenticate to access the security posture engine</p>
+            <p style={styles.formMono}>SECUREFLOW SIGN IN</p>
+            <h2 style={styles.formTitle}>Sign in</h2>
+            <p style={styles.formSub}>Sign in to review your scans, findings, and compliance checks.</p>
 
             {error && (
               <div style={styles.errorBox}>
@@ -159,11 +165,11 @@ export const Login: React.FC = () => {
                 {loading ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
                     <span style={styles.spinner} />
-                    AUTHENTICATING...
+                    SIGNING IN...
                   </span>
                 ) : (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                    INITIALIZE SYSTEM
+                    SIGN IN
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                       <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
@@ -239,6 +245,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     gap: 4,
     alignItems: 'center',
+    flexWrap: 'wrap' as const,
   },
   tab: {
     fontFamily: '"Geist Mono", monospace',
@@ -266,20 +273,10 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 360,
     position: 'relative',
   },
-  cardShell: {
-    position: 'absolute',
-    inset: -1,
-    borderRadius: 16,
-    background: 'radial-gradient(ellipse at top, var(--nexus-border-bright) 0.5px, transparent 0.5px)',
-    pointerEvents: 'none',
-    zIndex: 0,
-  },
   cardInner: {
     position: 'relative',
     zIndex: 1,
     background: 'var(--nexus-surface)',
-    backdropFilter: 'blur(24px)',
-    WebkitBackdropFilter: 'blur(24px)',
     border: '0.8px solid var(--nexus-border)',
     borderRadius: 16,
     padding: '36px 32px',

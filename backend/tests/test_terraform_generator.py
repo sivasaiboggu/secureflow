@@ -46,6 +46,16 @@ class TerraformGeneratorTests(unittest.TestCase):
         code = GEN.get_remediation_code('SOMETHING_ELSE', 'i-0123456789abcdef0')
         self.assertIn('Manual review required', code)
 
+    def test_fallback_comment_cannot_break_out_with_newlines(self):
+        # A crafted finding type must not inject plan lines through the
+        # `#` comment in the manual-review fallback: the whole value is
+        # collapsed onto the one comment line, so no generated line
+        # starts a resource block or any other HCL.
+        code = GEN.get_remediation_code('EVIL\nresource "aws_s3_bucket" "x" {\n bucket = "pwned"', 'i-0123456789abcdef0')
+        non_comment = [line for line in code.splitlines() if line and not line.startswith('#')]
+        self.assertEqual(non_comment, [])
+        self.assertIn('EVIL resource "aws_s3_bucket" "x" { bucket = "pwned"', code.splitlines()[0])
+
 
 if __name__ == '__main__':
     unittest.main()

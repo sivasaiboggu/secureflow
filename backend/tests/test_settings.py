@@ -34,5 +34,12 @@ class ProductionSettingsTests(unittest.TestCase):
     def test_production_accepts_long_custom_key(self):
         self.assertEqual(self.check_settings(False, "local-test-key-not-for-deployment-0123456789").returncode, 0)
 
+    def test_production_rejects_env_example_placeholder_key(self):
+        # The placeholder shipped in .env.example is the same string for
+        # everyone who copies the file; it must never pass as a key.
+        result = self.check_settings(False, "paste-your-own-64-hex-character-secret-here")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("When DEBUG=False", result.stderr)
+
 if __name__ == "__main__":
     unittest.main()

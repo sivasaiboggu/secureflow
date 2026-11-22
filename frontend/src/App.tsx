@@ -3,7 +3,6 @@ import { BrowserRouter, Link, useNavigate, useLocation } from 'react-router-dom'
 import { CssBaseline } from '@mui/material';
 import { LayoutDashboard, ScanSearch, ShieldAlert, BarChart3, Cloud, Users, Bell, Sun, Moon, LogOut } from 'lucide-react';
 import { AppRoutes } from './routes';
-import { WebGLBackground } from './components/common/WebGLBackground';
 import { ApiUnavailableBanner } from './components/common/ApiUnavailableBanner';
 import { clearAuthKeys } from './services/api';
 import { NexusThemeProvider, useNexusTheme } from './theme/ThemeContext';
@@ -85,7 +84,6 @@ const navStyles: Record<string, React.CSSProperties> = {
     padding: '0 32px',
     height: 56,
     background: 'var(--nexus-header-bg)',
-    backdropFilter: 'blur(16px)',
     borderBottom: '0.8px solid var(--nexus-border)',
     position: 'sticky',
     top: 0,
@@ -161,11 +159,9 @@ const navStyles: Record<string, React.CSSProperties> = {
 };
 
 const AppShell: React.FC = () => {
-  const { mode } = useNexusTheme();
   return (
     <>
       <CssBaseline />
-      <WebGLBackground dark={mode === 'dark'} />
       <BrowserRouter>
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative', zIndex: 1 }}>
           <NavigationHeader />

@@ -12,6 +12,18 @@ _SAFE_RESOURCE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._\-/]{0,190}$")
 _SAFE_TF_NAME = re.compile(r"^[A-Za-z0-9_]+$")
 
 
+def _comment_text(value: str) -> str:
+    """One line of plain text for a `#` comment in generated HCL.
+
+    A raw value interpolated into a comment breaks out of it on the first
+    newline, so a crafted finding type could inject arbitrary plan lines.
+    Scanner types are fixed strings today, but the fallback path takes
+    whatever it is given, so strip newlines and control characters here
+    rather than trusting the caller.
+    """
+    return re.sub(r"\s+", " ", value).strip()[:200]
+
+
 def _validate_resource_id(resource_id: str) -> str:
     """Return a resource identifier safe to embed in generated HCL."""
     if not isinstance(resource_id, str) or not _SAFE_RESOURCE_ID.match(resource_id):
@@ -114,7 +126,7 @@ resource "aws_instance_metadata_defaults" "{safe_name}_imds_enforce" {{
         elif "IMDS" in vtype:
             return self.generate_imds_required_fix(res_name)
 
-        return f'''# Manual review required for finding category {vulnerability_type}
+        return f'''# Manual review required for finding category {_comment_text(vulnerability_type)}
 # Resource: {resource_id}
 # Apply security policies following your corporate directory templates.
 '''

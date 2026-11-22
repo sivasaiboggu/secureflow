@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CircularProgress, Box } from '@mui/material';
+import { Cloud, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { api } from '../../services/api';
 
 interface CloudAccount {
@@ -8,12 +9,6 @@ interface CloudAccount {
   provider: string;
   is_active: boolean;
 }
-
-const providerIcon: Record<string, string> = {
-  aws: '☁',
-  gcp: '◆',
-  azure: '▲',
-};
 
 const providerLabel: Record<string, string> = {
   aws: 'Amazon Web Services',
@@ -80,17 +75,19 @@ export const CloudAccounts: React.FC = () => {
 
       <div className="accounts-grid" style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 20, alignItems: 'start' }}>
         {/* Form panel */}
-        <div style={{ background: 'var(--nexus-surface)', backdropFilter: 'blur(24px)', border: '0.8px solid var(--nexus-border)', borderRadius: 12, padding: 28 }}>
+        <div style={{ background: 'var(--nexus-surface)', border: '0.8px solid var(--nexus-border)', borderRadius: 12, padding: 28 }}>
           <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase' as const, color: 'var(--nexus-text-faint)', marginBottom: 20 }}>REGISTER NEW ACCOUNT</p>
 
           {message && (
-            <div style={{ background: 'rgba(74,222,128,0.1)', border: '0.8px solid rgba(74,222,128,0.3)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-              <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'var(--sev-low)', letterSpacing: '0.05em' }}>✓ {message}</p>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'rgba(74,222,128,0.1)', border: '0.8px solid rgba(74,222,128,0.3)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+              <CheckCircle2 size={14} color="var(--sev-low)" style={{ flexShrink: 0, marginTop: 1 }} />
+              <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'var(--sev-low)', letterSpacing: '0.05em', margin: 0 }}>{message}</p>
             </div>
           )}
           {error && (
-            <div style={{ background: 'rgba(239,68,68,0.1)', border: '0.8px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-              <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'var(--sev-critical)', letterSpacing: '0.05em' }}>⚠ {error}</p>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'rgba(239,68,68,0.1)', border: '0.8px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+              <AlertTriangle size={14} color="var(--sev-critical)" style={{ flexShrink: 0, marginTop: 1 }} />
+              <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11, color: 'var(--sev-critical)', letterSpacing: '0.05em', margin: 0 }}>{error}</p>
             </div>
           )}
 
@@ -148,7 +145,7 @@ export const CloudAccounts: React.FC = () => {
         </div>
 
         {/* Accounts list */}
-        <div style={{ background: 'var(--nexus-surface)', backdropFilter: 'blur(24px)', border: '0.8px solid var(--nexus-border)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--nexus-surface)', border: '0.8px solid var(--nexus-border)', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ padding: '20px 24px', borderBottom: '0.8px solid var(--nexus-border-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <p style={{ fontFamily: '"Geist Mono", monospace', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase' as const, color: 'var(--nexus-text-faint)' }}>
               {accounts.length} SAVED ACCOUNTS
@@ -171,9 +168,10 @@ export const CloudAccounts: React.FC = () => {
               onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(231,255,114,0.03)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
-              {/* Provider icon */}
+              {/* Provider icon: a real icon, not a text glyph. Only AWS
+                  accounts can be registered, so one cloud mark covers it. */}
               <div style={{ width: 42, height: 42, background: 'var(--nexus-elevated-bg)', border: '0.8px solid var(--nexus-border)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#E7FF72', flexShrink: 0 }}>
-                {providerIcon[acc.provider] || '☁'}
+                <Cloud size={18} />
               </div>
 
               <div style={{ flex: 1 }}>

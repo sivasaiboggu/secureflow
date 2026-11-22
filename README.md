@@ -4,7 +4,7 @@ SecureFlow is a local cloud-security research prototype. It includes AWS listing
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```mermaid
 graph TD
@@ -20,7 +20,7 @@ graph TD
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 secureflow/
@@ -51,7 +51,7 @@ secureflow/
 
 ---
 
-## ⚡ Quick Start (Single-Command Setup)
+## Quick Start (Single-Command Setup)
 
 To configure, compile, train the AI models, and run the database and dashboard locally:
 
@@ -76,7 +76,7 @@ To configure, compile, train the AI models, and run the database and dashboard l
 
 ---
 
-## 🧠 AI/ML Engine Models
+## AI/ML Engine Models
 
 Runtime review rules and separate model-development code have different roles:
 
@@ -298,8 +298,8 @@ The readiness probe now runs its database check with SQLAlchemy 2.0 textual SQL
 and answers 200 only when the database actually responds. A failed probe returns
 a fixed "not ready" body and log line: driver errors, which can carry the
 database user, host or DSN, stay out of both because the probe is
-unauthenticated. The API description no longer advertises "AI-powered"
-management; it describes the prototype as it is. Health/readiness behavior is
+unauthenticated. The API description no longer claims AI capabilities the
+prototype does not have; it describes the prototype as it is. Health/readiness behavior is
 covered by isolated tests with a synthetic broken database; no live database was
 used.
 
@@ -337,7 +337,7 @@ of claiming applied NLP or autoencoder detection.
 - The dashboard shows a compliance overview with per-framework progress bars (CIS, NIST, PCI DSS, HIPAA, GDPR) from `GET /api/v1/compliance/summary`, and the top five critical/high findings by CVSS with a link to the findings page. Both sections show an honest empty state when there is nothing to show — no invented scores.
 - The vulnerabilities page is a searchable, filterable list (severity pills with counts, open/remediated status, text search across title, resource and type). Selecting a finding opens a slide-over drawer with numbered remediation steps derived from the recommendation, compliance frameworks, a copyable Terraform fix, and the review-only "Save plan for review" action. Escape, backdrop click, or the close button dismisses it.
 
-## 🧪 Running tests
+## Running tests
 
 Backend (uses the project's virtualenv; no live database or cloud needed):
 
@@ -357,10 +357,10 @@ npm run build
 Known state: the backend suite's one pre-existing failure,
 `test_readiness_reports_ready_with_a_working_database`, is FIXED in 1.0.1
 (the test harness evicted `sys.modules` entries mid-import; the fix keeps
-only the intended router swap). The suite is 172 passed, 0 failed with a
+only the intended router swap). The suite is 178 passed, 0 failed with a
 live PostgreSQL instance (149 in 1.0.2, plus 4 refresh-token tests and
 7 analysis-endpoint tests added in 1.0.3, plus 2 tests added in 1.0.4,
-plus 10 tests added in 1.0.5) —
+plus 10 tests added in 1.0.5, plus 6 tests added in 1.0.6) —
 without a live database, that single readiness test still fails by design,
 since it tests readiness *with a working database*.
 Timestamps are naive UTC by design (all `DateTime` columns are
@@ -368,6 +368,72 @@ timezone-naive); `backend/app/utils/timestamps.py` is the single place that
 produces them, after the deprecated `datetime.utcnow()` was removed.
 
 ## Changelog
+
+### 1.0.6 (22 Nov 2026)
+- Patch release. **Config correctness, copy honesty, small logic fixes.**
+- Config: the backend runs on port 8000 everywhere (main.py,
+  docker-compose, README, setup.sh) but the frontend defaulted to 8080,
+  so a local build without `VITE_API_URL` pointed at a port nothing
+  listens on, and the login error text sent the user to check the wrong
+  port. Default is 8000 in `api.ts`, the login error and
+  `frontend/.env.example`. The build also emitted absolute `/assets`
+  paths, so `dist/index.html` opened from a file or under a sub-path
+  rendered a blank page; a new `frontend/vite.config.ts` sets
+  `base: './'`.
+- Config: `.env.example` shipped a Neon database URL and a 64-hex JWT
+  secret that read as real credentials. Both are placeholders now, and
+  the placeholder secret is on the production validator's reject list,
+  so copying the example verbatim fails loudly under `DEBUG=False`
+  instead of silently sharing a known key. `CLOUD_CREDENTIALS_KEY` was
+  documented only in the README; it is now in `.env.example` with the
+  generator command, and the seal/open error names the variable, the
+  backend `.env` file and the value format instead of a bare
+  "not configured".
+- Logic: `get_remediation_code`'s manual-review fallback interpolated
+  the finding type raw into a `#` comment, so a type containing a
+  newline broke out of the comment and injected plan lines. The value is
+  now collapsed to one sanitized line. `ComplianceEngine.evaluate_findings`
+  had no callers and no tests (only `calculate_scores` is used by the
+  API) and read `finding["severity"]`, which would raise `KeyError` if
+  it ever ran; removed with its unused imports.
+- UI/copy: the login page sold the product with speed-and-intelligence
+  slogans and an "Initialize System" button instead of saying what it
+  is; it now reads "Cloud security posture, in one place" with a plain
+  "Sign in" form. Cloud Accounts rendered provider icons and
+  success/error marks as text glyphs (cloud, diamond, triangle, check,
+  warning); they are lucide icons now, as is the "FIXED" mark in the
+  findings list. The log classifier's `isThret` typo is fixed.
+  Emoji section headings (16) are removed from the README and docs.
+- Playbook pass (same release): the design playbook was applied to
+  every screen from references collected first (Mobbin dashboard
+  essay, Page Flows Pipedrive onboarding recording, UI Sources
+  data-dense dashboard, Linear/Stripe/Vercel; saved in
+  `docs/design-references-1.0.6.md`). Frosted surfaces are solid
+  now — every `backdrop-filter: blur` is gone (panels, header,
+  drawer, modal, MUI Paper/Alert) and the surface tokens are solid
+  colours in both themes. The dot-pattern canvas background
+  (`DotGridBackground`, previously misnamed `WebGLBackground` — a 2D
+  canvas, never WebGL) is deleted; the page background is the solid
+  app colour. Staggered framer-motion entrances are gone from the
+  dashboard (it renders its final state immediately); the only motion
+  left is state changes (drawer slide, modal scale, bar/progress
+  fills, theme toggle, login spinner). The shimmer skeleton is
+  static blocks, the running-scan sheen and the breathing live dot
+  are gone (solid dot + RUNNING badge), hover lifts are gone from
+  cards, the login card's radial-gradient shell is gone, and the
+  trend chart's gradient fill is a flat 8% accent.
+- Responsive: the login page had no mobile breakpoint — its fixed
+  420px form column squeezed the brand panel and overflowed a phone
+  viewport. Below 768px the page now stacks (brand on top, sign-in
+  card full width), verified at 390px.
+- Tests: 6 new tests (credential-key error wording, example-placeholder
+  secret rejection, Terraform fallback comment injection, and a copy
+  guard that fails the build on emoji, text-glyph icons or
+  marketing-cliche words in user-facing text, plus a surface/motion
+  guard that fails the build on frosted surfaces, staggered
+  entrances, shimmer, radial glows and hover lifts). Suite: 178
+  passed with a live database; without one, the same single
+  readiness test fails by design, as before.
 
 ### 1.0.5 (21 Nov 2026)
 - Patch release. **Premium UI pass + senior logic review.**
