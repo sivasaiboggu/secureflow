@@ -8,6 +8,7 @@ import { serve } from './server.mjs';
 const require = createRequire(new URL('../../frontend/package.json', import.meta.url));
 const { chromium } = require('playwright-core');
 const { AxeBuilder } = require('@axe-core/playwright');
+const { color } = require('./src/theme/tokens.json');
 const dist = process.argv[2] || 'frontend/dist';
 const systemChromium = await access('/usr/bin/chromium').then(() => '/usr/bin/chromium', () => undefined);
 const executablePath = process.env.CHROME_BIN || systemChromium || chromium.executablePath();
@@ -43,6 +44,7 @@ try {
     if (path === '/settings/users') await page.getByText('siva@example.com', { exact: true }).waitFor();
   };
   const audit = async label => {
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
     assert.deepEqual(result.violations.map(({ id, nodes }) => ({ id, selectors: nodes.map(({ target, failureSummary }) => [target, failureSummary]) })), [], label);
   };
@@ -61,6 +63,10 @@ try {
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   assert.equal(new URLSearchParams((await login).postData()).get('username'), 'siva@example.com');
   await page.getByRole('heading', { name: 'Cloud posture' }).waitFor();
+  await page.getByText('7 of 16 checks passed across finished scans.').waitFor();
+  await page.getByRole('button', { name: 'Switch to light mode' }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click();
   await page.getByText('7 of 16 checks passed across finished scans.').waitFor();
   await page.getByRole('link', { name: /S3 Bucket Public Access Not Fully Blocked/ }).click();
   await page.getByRole('dialog').waitFor();
@@ -131,6 +137,23 @@ try {
       }, { mode, signedIn: path !== '/login' });
       await open(path, heading);
       assert.equal(await page.locator('html').getAttribute('data-theme'), mode);
+      const themeScope = page.locator('.workspace, .public-shell');
+      assert.equal(await themeScope.getAttribute('data-theme'), mode);
+      const textIsCurrent = await themeScope.evaluate((shell, ink) => {
+        const canvas = document.createElement('canvas');
+        const pixels = canvas.getContext('2d', { willReadFrequently: true });
+        function srgb(cssColor) {
+          pixels.fillStyle = cssColor;
+          pixels.fillRect(0, 0, 1, 1);
+          return pixels.getImageData(0, 0, 1, 1).data;
+        }
+        const expected = srgb(ink);
+        const brand = shell.querySelector('.brand');
+        return [shell, brand].filter(Boolean).every(element =>
+          srgb(getComputedStyle(element).color).every((channel, index) => Math.abs(channel - expected[index]) <= 1)
+        );
+      }, color[mode].text.hex);
+      assert.equal(textIsCurrent, true, `${path} text uses the ${mode} token`);
       await audit(`${path} in ${mode} mode`);
     }
   }

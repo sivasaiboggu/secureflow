@@ -1,9 +1,9 @@
-import { mkdir } from 'node:fs/promises';
+import { access, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { serve } from './server.mjs';
 
-const require = createRequire(process.env.VISUAL_TOOLS ? resolve(process.env.VISUAL_TOOLS, 'package.json') : new URL('../../frontend/package.json', import.meta.url));
+const require = createRequire(new URL('../../frontend/package.json', import.meta.url));
 const { chromium } = require('playwright-core');
 const [dist, output, variant = 'after'] = process.argv.slice(2);
 if (!dist || !output || !['before', 'after'].includes(variant)) {
@@ -23,8 +23,9 @@ const routes = [
 
 const server = await serve(dist);
 await mkdir(output, { recursive: true });
+const systemChromium = await access('/usr/bin/chromium').then(() => '/usr/bin/chromium', () => undefined);
 const browser = await chromium.launch({
-  executablePath: process.env.CHROME_BIN || '/usr/bin/chromium',
+  executablePath: process.env.CHROME_BIN || systemChromium || chromium.executablePath(),
   headless: true,
   args: ['--no-sandbox'],
 });

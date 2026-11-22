@@ -6,7 +6,7 @@ import { ApiUnavailableBanner } from './components/common/ApiUnavailableBanner';
 import { BrandMark, PageHeader } from './components/common/Workspace';
 import { ThemeButton } from './components/common/ThemeButton';
 import { clearAuthKeys } from './services/api';
-import { ThemeProvider } from './theme/ThemeContext';
+import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { ToastProvider } from './components/common/ToastContext';
 import '@fontsource-variable/instrument-sans/wght.css';
 import './index.css';
@@ -76,6 +76,7 @@ class ViewBoundary extends Component<{ children: ReactNode }, { failed: boolean 
 
 function AppShell() {
   const { pathname } = useLocation();
+  const { mode } = useTheme();
   const showNav = pathname !== '/login' && !!localStorage.getItem('token');
   const main = useRef<HTMLElement>(null);
   const previousPath = useRef(pathname);
@@ -89,7 +90,7 @@ function AppShell() {
 
   return <>
     <a className="skip-link" href="#main">Skip to content</a>
-    <div className={showNav ? 'workspace' : 'public-shell'}>
+    <div className={showNav ? 'workspace' : 'public-shell'} data-theme={mode}>
       {showNav && <Sidebar />}
       <div className="workspace-content">
         {showNav && <WorkspaceBar />}

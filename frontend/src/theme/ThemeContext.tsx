@@ -6,7 +6,7 @@ const ThemeContext = createContext<{ mode: ThemeMode; toggleMode: () => void }>(
   mode: 'dark', toggleMode: () => {},
 });
 
-function readMode(): ThemeMode {
+export function readThemeMode(): ThemeMode {
   try {
     return localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark';
   } catch {
@@ -15,7 +15,7 @@ function readMode(): ThemeMode {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState(readMode);
+  const [mode, setMode] = useState(readThemeMode);
   const toggleMode = useCallback(() => setMode(current => current === 'dark' ? 'light' : 'dark'), []);
 
   useLayoutEffect(() => {
