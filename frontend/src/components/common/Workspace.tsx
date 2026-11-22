@@ -1,12 +1,12 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
-import { AlertCircle, ArrowUpRight, X } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function BrandMark() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="brand-mark" fill="none">
-      <path d="M20 5H5v14h15M5 12h15" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M17 9h6v6h-6z" fill="currentColor" />
+      <path d="M4 9V4h5m6 0h5v5m0 6v5h-5m-6 0H4v-5" stroke="currentColor" strokeWidth="1.6" />
+      <path d="m8 12 3 3 5-6" stroke="currentColor" strokeWidth="1.6" />
     </svg>
   );
 }
@@ -25,7 +25,7 @@ export function SectionHeading({ title, action, id }: { title: string; action?: 
 }
 
 export function TextLink({ to, children }: { to: string; children: ReactNode }) {
-  return <Link className="text-link" to={to}>{children}<ArrowUpRight size={16} aria-hidden="true" /></Link>;
+  return <Link className="text-link" to={to}>{children}</Link>;
 }
 
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
@@ -54,7 +54,10 @@ export function Severity({ value }: { value: string }) {
 
 export function Meter({ value, label, tone }: { value: number; label: string; tone?: string }) {
   const percent = Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0));
-  return <meter className="meter" min={0} max={100} value={percent} aria-label={label} data-tone={tone}>{percent}%</meter>;
+  return <span className="meter-track" data-tone={tone}>
+    <meter className="sr-only" min={0} max={100} value={percent} aria-label={label}>{percent}%</meter>
+    <span className="meter-fill" aria-hidden="true" style={{ '--meter-scale': percent / 100 } as React.CSSProperties} />
+  </span>;
 }
 
 export function Sheet({ title, closeLabel, onClose, drawer = false, children }: {

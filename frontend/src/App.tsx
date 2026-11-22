@@ -1,14 +1,14 @@
-import { Component, useEffect, useRef, type ReactNode } from 'react';
+import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
 import { BrowserRouter, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Bell, Cloud, LayoutDashboard, LogOut, ScanLine, ShieldAlert, Users } from 'lucide-react';
+import { Activity, Bell, Cloud, ListChecks, LayoutDashboard, LogOut, ScanLine, Search, ShieldAlert, Users } from 'lucide-react';
 import { AppRoutes } from './routes';
 import { ApiUnavailableBanner } from './components/common/ApiUnavailableBanner';
-import { BrandMark, PageHeader } from './components/common/Workspace';
+import { BrandMark, PageHeader, Sheet } from './components/common/Workspace';
 import { ThemeButton } from './components/common/ThemeButton';
 import { clearAuthKeys } from './services/api';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { ToastProvider } from './components/common/ToastContext';
-import '@fontsource-variable/instrument-sans/wght.css';
+import '@fontsource-variable/jetbrains-mono/wght.css';
 import './index.css';
 
 const groups = [
@@ -16,6 +16,7 @@ const groups = [
     { label: 'Overview', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Scans', path: '/scans', icon: ScanLine },
     { label: 'Findings', path: '/vulnerabilities', icon: ShieldAlert },
+    { label: 'Policy checks', path: '/policies', icon: ListChecks },
     { label: 'Analytics', path: '/analytics', icon: Activity },
   ] },
   { label: 'Settings', links: [
@@ -25,34 +26,56 @@ const groups = [
   ] },
 ];
 
-function Sidebar() {
-  return <aside className="sidebar">
-    <Link className="brand" to="/dashboard"><BrandMark /><span>SecureFlow</span></Link>
+function ViewPicker({ close }: { close: () => void }) {
+  const [query, setQuery] = useState('');
+  const matches = groups.flatMap(group => group.links).filter(link =>
+    link.label.toLowerCase().includes(query.trim().toLowerCase())
+  );
+  return <Sheet title="Go to view" closeLabel="Close view picker" onClose={close}>
+    <div className="field">
+      <label htmlFor="view-picker">Find a view</label>
+      <input id="view-picker" type="search" value={query} onChange={event => setQuery(event.target.value)} autoFocus />
+    </div>
+    {matches.length ? <ul className="view-picker-results">{matches.map(({ label, path, icon: Icon }) => <li key={path}>
+      <Link className="side-link" to={path} onClick={close}><Icon size={16} aria-hidden="true" />{label}</Link>
+    </li>)}</ul> : <p className="muted" role="status">No matching views.</p>}
+  </Sheet>;
+}
+
+function ConsoleHeader() {
+  const navigate = useNavigate();
+  const [picker, setPicker] = useState(false);
+  useEffect(() => {
+    function shortcut(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setPicker(true);
+      }
+    }
+    window.addEventListener('keydown', shortcut);
+    return () => window.removeEventListener('keydown', shortcut);
+  }, []);
+  return <header className="console-header">
+    <div className="console-top">
+      <Link className="brand" to="/dashboard"><BrandMark /><span>SecureFlow</span></Link>
+      <div className="bar-actions">
+        <button type="button" className="button view-picker-button" aria-label="Go to view" aria-haspopup="dialog" onClick={() => setPicker(true)}>
+          <Search size={16} aria-hidden="true" /><span>Go to</span>
+        </button>
+        <ThemeButton />
+        <button type="button" className="button sign-out" aria-label="Sign out" onClick={() => { clearAuthKeys(); navigate('/login', { replace: true }); }}>
+          <LogOut size={16} aria-hidden="true" /><span>Sign out</span>
+        </button>
+      </div>
+    </div>
     <nav aria-label="Main navigation" className="side-navigation">
       {groups.map(({ label, links }) => <div className="nav-group" key={label}>
-        <p className="nav-label">{label}</p>
         {links.map(({ label: name, path, icon: Icon }) =>
-          <NavLink key={path} to={path} className="side-link"><Icon size={17} aria-hidden="true" /><span>{name}</span></NavLink>
+          <NavLink key={path} to={path} className="side-link"><Icon size={16} aria-hidden="true" /><span>{name}</span></NavLink>
         )}
       </div>)}
     </nav>
-  </aside>;
-}
-
-function WorkspaceBar() {
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const group = groups.find(section => section.links.some(link => link.path === pathname));
-  const current = group?.links.find(link => link.path === pathname);
-
-  return <header className="workspace-bar">
-    <p className="breadcrumb"><span>{group?.label || 'Workspace'}</span>{current && <><span aria-hidden="true">/</span><strong>{current.label}</strong></>}</p>
-    <div className="bar-actions">
-      <ThemeButton />
-      <button type="button" className="button sign-out" aria-label="Sign out" onClick={() => { clearAuthKeys(); navigate('/login'); }}>
-        <LogOut size={16} aria-hidden="true" /><span>Sign out</span>
-      </button>
-    </div>
+    {picker && <ViewPicker close={() => setPicker(false)} />}
   </header>;
 }
 
@@ -91,9 +114,8 @@ function AppShell() {
   return <>
     <a className="skip-link" href="#main">Skip to content</a>
     <div className={showNav ? 'workspace' : 'public-shell'} data-theme={mode}>
-      {showNav && <Sidebar />}
+      {showNav && <ConsoleHeader />}
       <div className="workspace-content">
-        {showNav && <WorkspaceBar />}
         <ApiUnavailableBanner />
         <main id="main" tabIndex={-1} ref={main}>
           <ViewBoundary key={pathname}><AppRoutes /></ViewBoundary>
@@ -104,5 +126,5 @@ function AppShell() {
 }
 
 export default function App() {
-  return <ThemeProvider><ToastProvider><BrowserRouter><AppShell /></BrowserRouter></ToastProvider></ThemeProvider>;
+  return <ThemeProvider><ToastProvider><BrowserRouter useTransitions={false}><AppShell /></BrowserRouter></ToastProvider></ThemeProvider>;
 }

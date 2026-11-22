@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { ArrowRight } from 'lucide-react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, ListChecks, ScanLine, ShieldAlert } from 'lucide-react';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod/mini';
-import { api, apiUnavailableReason } from '../../services/api';
+import { api, apiUnavailableReason, safeReturnTo, storeSession } from '../../services/api';
 import { apiMessage, BrandMark, Notice } from '../common/Workspace';
 import { ThemeButton } from '../common/ThemeButton';
 
@@ -14,12 +14,17 @@ const credentials = z.object({
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [visible, setVisible] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { search } = useLocation();
+  const query = new URLSearchParams(search);
+  const returnTo = safeReturnTo(query.get('returnTo'));
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (loading) return;
     const parsed = credentials.safeParse({ email, password });
     if (!parsed.success) {
       setError(parsed.error.issues[0].message);
@@ -32,10 +37,8 @@ export function Login() {
       const response = await api.post('/auth/login', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
-      localStorage.setItem('token', response.data.access_token);
-      if (response.data.refresh_token) localStorage.setItem('refresh_token', response.data.refresh_token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/dashboard', { replace: true });
+      storeSession(response.data);
+      navigate(returnTo, { replace: true });
     } catch (error) {
       setError(apiMessage(error, apiUnavailableReason || 'Could not sign in. Check your connection and try again.'));
     } finally {
@@ -43,7 +46,7 @@ export function Login() {
     }
   }
 
-  if (localStorage.getItem('token')) return <Navigate to="/dashboard" replace />;
+  if (localStorage.getItem('token')) return <Navigate to={returnTo} replace />;
 
   return <div className="login-page">
     <header className="login-bar">
@@ -51,30 +54,37 @@ export function Login() {
       <ThemeButton />
     </header>
     <div className="login-grid">
-      <section className="login-intro text-ink">
-        <h2>Review your<br /> AWS posture.</h2>
-        <p>Run cloud checks, investigate findings and save Terraform plans for review.</p>
-        <div className="login-rules" aria-hidden="true"><i /><i /><i /><i /><i /></div>
-        <p className="login-scope"><span>7 AWS scanners</span><span>8 CIS controls</span></p>
-      </section>
       <section className="login-form-section">
         <div className="login-form">
           <div><h1>Sign in</h1><p className="muted">Use your organization’s SecureFlow account.</p></div>
+          {query.has('expired') && <Notice>Your session ended. Sign in to return to your last view.</Notice>}
           {error && <Notice tone="error">{error}</Notice>}
           <form className="stack" onSubmit={handleLogin} aria-busy={loading}>
             <div className="field">
               <label htmlFor="login-email">Email address</label>
-              <input id="login-email" type="email" autoComplete="username" required value={email} onChange={event => setEmail(event.target.value)} />
+              <input id="login-email" type="email" autoComplete="username" autoCapitalize="none" spellCheck={false} required value={email} onChange={event => setEmail(event.target.value)} />
             </div>
             <div className="field">
               <label htmlFor="login-password">Password</label>
-              <input id="login-password" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} />
+              <div className="password-field">
+                <input id="login-password" type={visible ? 'text' : 'password'} autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} />
+                <button type="button" className="button icon-button" aria-label={visible ? 'Hide password' : 'Show password'} onClick={() => setVisible(value => !value)}>
+                  {visible ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                </button>
+              </div>
             </div>
-            <button id="login-submit" type="submit" className="button primary" disabled={loading}>
-              {loading ? 'Signing in…' : 'Sign in'} <ArrowRight size={17} aria-hidden="true" />
-            </button>
+            <button id="login-submit" type="submit" className="button primary" disabled={loading}>{loading ? 'Signing in…' : 'Sign in'}</button>
           </form>
         </div>
+      </section>
+      <section className="login-intro">
+        <h2>AWS security console</h2>
+        <p className="muted">Review what your scans found and record how you’re handling each issue.</p>
+        <ul className="login-capabilities">
+          <li><ScanLine size={18} aria-hidden="true" /><span><strong>Run a scan</strong><small>Check resources in a connected AWS account.</small></span></li>
+          <li><ShieldAlert size={18} aria-hidden="true" /><span><strong>Triage findings</strong><small>Review evidence and save Terraform plans.</small></span></li>
+          <li><ListChecks size={18} aria-hidden="true" /><span><strong>Review policy checks</strong><small>See which CIS controls passed by scan.</small></span></li>
+        </ul>
       </section>
     </div>
     <footer className="login-footer">

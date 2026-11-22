@@ -38,7 +38,7 @@ export function UserManagement() {
         <table className="ledger-table user-table">
           <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Status</th></tr></thead>
           <tbody>{users.map(user => <tr key={user.email}>
-            <td><span className="row-title">{user.full_name || 'Name unavailable'}</span></td>
+            <td><span className="row-title">{user.full_name || 'Name unavailable'}</span><small className="table-mobile-detail">{user.email} · {user.role || 'user'}</small></td>
             <td>{user.email}</td>
             <td>{user.role || 'user'}</td>
             <td><Status tone={user.is_active ? 'success' : 'neutral'}>{user.is_active ? 'Active' : 'Inactive'}</Status></td>

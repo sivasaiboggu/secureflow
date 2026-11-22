@@ -12,13 +12,14 @@ if (!dist || !output || !['before', 'after'].includes(variant)) {
 
 const routes = [
   ['01-sign-in', '/login', /sign in/i],
-  ['02-overview', '/dashboard', variant === 'before' ? /overview dashboard/i : /cloud posture/i],
+  ['02-overview', '/dashboard', /cloud posture/i],
   ['03-scans', '/scans', /scan/i],
   ['04-findings', '/vulnerabilities', /findings|vulnerabilities/i],
   ['05-analytics', '/analytics', /log and metric review/i],
   ['06-accounts', '/settings/accounts', /cloud accounts/i],
   ['07-notifications', '/settings/notifications', /notification/i],
   ['08-users', '/settings/users', /directory|users/i],
+  ...(variant === 'after' ? [['14-policy-checks', '/policies', /policy checks/i]] : []),
 ];
 
 const server = await serve(dist);
@@ -60,6 +61,9 @@ try {
     if (path === '/vulnerabilities') await page.getByText('S3 Bucket Public Access Not Fully Blocked', { exact: true }).waitFor();
     if (path === '/settings/accounts') await page.getByText('Production AWS Account', { exact: true }).waitFor();
     if (path === '/settings/users') await page.getByText('siva@example.com', { exact: true }).last().waitFor();
+    if (path === '/policies') {
+      await page.getByText('Block public access to S3 buckets', { exact: true }).click();
+    }
     await capture(name);
     if (path === '/dashboard') {
       await page.getByRole('button', { name: 'Switch to light mode' }).click();
@@ -67,7 +71,7 @@ try {
       await page.getByRole('button', { name: 'Switch to dark mode' }).click();
     }
     if (path === '/scans') {
-      await page.getByRole('button', { name: variant === 'before' ? 'Trigger Scan' : 'New scan' }).click();
+      await page.getByRole('button', { name: 'New scan' }).click();
       await page.getByRole('dialog').waitFor();
       await capture('10-scan-dialog');
     }
