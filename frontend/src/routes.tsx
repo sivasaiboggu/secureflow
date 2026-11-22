@@ -1,43 +1,37 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { Login } from './components/auth/Login';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
+import { MissingPage, ReferencePage } from './components/common/ReferencePages';
 
-// Route pages are lazy-loaded so the first paint only downloads the login
-// shell; each protected page (with its MUI/Recharts weight) loads on demand.
-const Dashboard = lazy(() => import('./components/dashboard/Dashboard').then(m => ({ default: m.Dashboard })));
-const ScanList = lazy(() => import('./components/scans/ScanList').then(m => ({ default: m.ScanList })));
-const VulnerabilityDetails = lazy(() => import('./components/vulnerabilities/VulnerabilityDetails').then(m => ({ default: m.VulnerabilityDetails })));
-const PredictiveAnalytics = lazy(() => import('./components/analytics/PredictiveAnalytics').then(m => ({ default: m.PredictiveAnalytics })));
-const CloudAccounts = lazy(() => import('./components/settings/CloudAccounts').then(m => ({ default: m.CloudAccounts })));
-const NotificationSettings = lazy(() => import('./components/settings/NotificationSettings').then(m => ({ default: m.NotificationSettings })));
-const UserManagement = lazy(() => import('./components/settings/UserManagement').then(m => ({ default: m.UserManagement })));
+const Dashboard = lazy(() => import('./components/dashboard/Dashboard').then(module => ({ default: module.Dashboard })));
+const ScanList = lazy(() => import('./components/scans/ScanList').then(module => ({ default: module.ScanList })));
+const VulnerabilityDetails = lazy(() => import('./components/vulnerabilities/VulnerabilityDetails').then(module => ({ default: module.VulnerabilityDetails })));
+const PredictiveAnalytics = lazy(() => import('./components/analytics/PredictiveAnalytics').then(module => ({ default: module.PredictiveAnalytics })));
+const CloudAccounts = lazy(() => import('./components/settings/CloudAccounts').then(module => ({ default: module.CloudAccounts })));
+const NotificationSettings = lazy(() => import('./components/settings/NotificationSettings').then(module => ({ default: module.NotificationSettings })));
+const UserManagement = lazy(() => import('./components/settings/UserManagement').then(module => ({ default: module.UserManagement })));
 
-export const AppRoutes = () => {
-  const isAuthenticated = () => {
-    return !!localStorage.getItem('token');
-  };
+export function AppRoutes() {
+  const isAuthenticated = !!localStorage.getItem('token');
+  const home = isAuthenticated ? '/dashboard' : '/login';
 
-  const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-    return isAuthenticated() ? children : <Navigate to="/login" replace />;
-  };
-
-  return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/scans" element={<ProtectedRoute><ScanList /></ProtectedRoute>} />
-        <Route path="/vulnerabilities" element={<ProtectedRoute><VulnerabilityDetails /></ProtectedRoute>} />
-        <Route path="/analytics" element={<ProtectedRoute><PredictiveAnalytics /></ProtectedRoute>} />
-        <Route path="/settings/accounts" element={<ProtectedRoute><CloudAccounts /></ProtectedRoute>} />
-        <Route path="/settings/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
-        <Route path="/settings/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-        {/* Unknown paths go to the dashboard for a signed-in user, not the
-            login form: sending an authenticated user to /login showed them
-            a sign-in screen while holding a valid session. */}
-        <Route path="*" element={isAuthenticated() ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
-      </Routes>
-    </Suspense>
-  );
-};
+  return <Suspense fallback={<LoadingSpinner />}>
+    <Routes>
+      <Route path="/" element={<Navigate to={home} replace />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/privacy" element={<ReferencePage kind="privacy" returnTo={home} />} />
+      <Route path="/usage" element={<ReferencePage kind="usage" returnTo={home} />} />
+      <Route element={isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/scans" element={<ScanList />} />
+        <Route path="/vulnerabilities" element={<VulnerabilityDetails />} />
+        <Route path="/analytics" element={<PredictiveAnalytics />} />
+        <Route path="/settings/accounts" element={<CloudAccounts />} />
+        <Route path="/settings/notifications" element={<NotificationSettings />} />
+        <Route path="/settings/users" element={<UserManagement />} />
+      </Route>
+      <Route path="*" element={<MissingPage returnTo={home} />} />
+    </Routes>
+  </Suspense>;
+}

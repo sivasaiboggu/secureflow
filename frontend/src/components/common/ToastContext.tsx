@@ -1,41 +1,26 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
-import { Snackbar, Alert } from '@mui/material';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { X } from 'lucide-react';
+import { Notice } from './Workspace';
 
 export type ToastSeverity = 'success' | 'error' | 'info' | 'warning';
+const ToastContext = createContext<{ showToast: (message: string, severity?: ToastSeverity) => void }>({ showToast: () => {} });
 
-interface ToastContextValue {
-  /** Show a short feedback toast (e.g. after triggering a scan or saving a remediation plan). */
-  showToast: (message: string, severity?: ToastSeverity) => void;
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [toast, setToast] = useState<{ message: string; tone: ToastSeverity } | null>(null);
+  const showToast = useCallback((message: string, tone: ToastSeverity = 'info') => setToast({ message, tone }), []);
+
+  useEffect(() => {
+    if (!toast || toast.tone === 'error') return;
+    const timer = window.setTimeout(() => setToast(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  return <ToastContext.Provider value={{ showToast }}>
+    {children}
+    {toast && <div className="toast"><Notice tone={toast.tone}>{toast.message}</Notice>
+      <button className="button icon-button" type="button" aria-label="Dismiss message" onClick={() => setToast(null)}><X size={16} aria-hidden="true" /></button>
+    </div>}
+  </ToastContext.Provider>;
 }
 
-const ToastContext = createContext<ToastContextValue>({ showToast: () => {} });
-
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState('');
-  const [severity, setSeverity] = useState<ToastSeverity>('info');
-
-  const showToast = useCallback((msg: string, sev: ToastSeverity = 'info') => {
-    setMessage(msg);
-    setSeverity(sev);
-    setOpen(true);
-  }, []);
-
-  return (
-    <ToastContext.Provider value={{ showToast }}>
-      {children}
-      <Snackbar
-        open={open}
-        autoHideDuration={5000}
-        onClose={() => setOpen(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={() => setOpen(false)} severity={severity} variant="filled" sx={{ fontFamily: '"Geist", sans-serif' }}>
-          {message}
-        </Alert>
-      </Snackbar>
-    </ToastContext.Provider>
-  );
-};
-
-export const useToast = (): ToastContextValue => useContext(ToastContext);
+export const useToast = () => useContext(ToastContext);
