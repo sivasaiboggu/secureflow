@@ -22,7 +22,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.config.database import Base, get_db
 from app.database.models import (
-    Organization, CloudAccount, Scan, Vulnerability, ComplianceCheck, Remediation,
+    Organization, CloudAccount, Scan, Vulnerability, ComplianceCheck, Remediation, AuditLog,
 )
 from app.services.analytics_service import analytics_service
 
@@ -55,9 +55,11 @@ class DemoScanVisibilityTests(unittest.TestCase):
         self.db.commit()
         compliance = load_endpoint('test_real_compliance_routes', 'compliance.py')
         remediation = load_endpoint('test_real_remediation_routes', 'remediation.py')
+        findings = load_endpoint('test_real_finding_routes', 'vulnerabilities.py')
         app = FastAPI()
         app.include_router(compliance.router, prefix='/compliance')
         app.include_router(remediation.router, prefix='/remediation')
+        app.include_router(findings.router, prefix='/vulnerabilities')
         app.dependency_overrides[get_db] = lambda: self.db
         self.client = TestClient(app)
 
@@ -115,6 +117,58 @@ class DemoScanVisibilityTests(unittest.TestCase):
         self.assertEqual([c['id'] for c in page2.json()], ['c2', 'c1'])
         over = self.client.get('/compliance/checks?limit=500')
         self.assertEqual(over.status_code, 422, over.text)
+
+    def test_policy_scope_distinguishes_sample_controls_and_resource_evidence(self):
+        self._scan('s1', 'DEMO_COMPLETED', 1, 1, 1)
+        self._scan('s2', 'FAILED', 0, 0, 2)
+        self._check('failed', 's1', 'CIS', 'FAIL')
+        self._check('old-evidence', 's1', 'CIS', 'FAIL')
+        self._check('passed', 's1', 'CIS', 'PASS')
+        self._check('unfinished', 's2', 'CIS', 'FAIL')
+        self.db.get(ComplianceCheck, 'failed').evidence = {
+            'control_level': True, 'violating_resources': ['r1', 'r2'],
+        }
+        self.db.commit()
+        result = self.client.get('/compliance/checks', params={'scan_id': 's1', 'status': 'fail'})
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual([row['id'] for row in result.json()], ['failed', 'old-evidence'])
+        first, legacy = result.json()
+        self.assertTrue(first['sample'])
+        self.assertTrue(first['control_level'])
+        self.assertEqual(first['violating_resources'], ['r1', 'r2'])
+        self.assertFalse(legacy['control_level'])
+        self.assertEqual(legacy['violating_resources'], [])
+        finished = self.client.get('/compliance/checks?finished_only=true').json()
+        self.assertNotIn('unfinished', [row['id'] for row in finished])
+
+    def test_triage_is_audited_conflict_checked_and_tenant_scoped(self):
+        self._scan('s1', 'COMPLETED', 0, 0, 1)
+        self.db.add(Organization(id='other-org', name='Other'))
+        self.db.add(Scan(id='s2', organization_id='other-org', cloud_account_id='account'))
+        for finding_id, scan_id in [('mine', 's1'), ('foreign', 's2')]:
+            self.db.add(Vulnerability(id=finding_id, scan_id=scan_id, resource_id='100%private',
+                                      resource_type='S3', vulnerability_type='PUBLIC', severity='HIGH',
+                                      cvss_score=8, title='Bucket finding'))
+        self.db.add(Vulnerability(id='second', scan_id='s1', resource_id='100Xprivate',
+                                  resource_type='S3', vulnerability_type='PUBLIC', severity='HIGH',
+                                  cvss_score=8, title='Bucket finding'))
+        self.db.commit()
+        searched = self.client.get('/vulnerabilities', params={'search': '%PRI'}).json()
+        self.assertEqual([row['id'] for row in searched], ['mine'])
+        second_page = self.client.get('/vulnerabilities', params={'search': 'bucket', 'skip': 1, 'limit': 1}).json()
+        self.assertEqual([row['id'] for row in second_page], ['second'])
+        change = {'status': 'IN_PROGRESS', 'expected_status': 'OPEN'}
+        self.assertEqual(self.client.patch('/vulnerabilities/foreign/triage', json=change).status_code, 404)
+        path = '/vulnerabilities/mine/triage'
+        self.assertEqual(self.client.patch(path, json={**change, 'status': 'BAD'}).status_code, 422)
+        saved = self.client.patch(path, json=change)
+        self.assertEqual(saved.status_code, 200, saved.text)
+        self.assertEqual(saved.json()['status'], 'IN_PROGRESS')
+        self.assertEqual(self.client.patch(path, json=change).status_code, 200)
+        self.assertEqual(self.client.patch(path, json={**change, 'status': 'IGNORED'}).status_code, 409)
+        audit = self.db.query(AuditLog).one()
+        self.assertEqual(audit.user_id, 'u1')
+        self.assertEqual(audit.details, {'vulnerability_id': 'mine', 'old_status': 'OPEN', 'new_status': 'IN_PROGRESS'})
 
     def test_remediation_history_honors_limit(self):
         self._scan('s1', 'COMPLETED', 0, 0, 1)

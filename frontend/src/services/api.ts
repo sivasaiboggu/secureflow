@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
 
 const configuredUrl = (import.meta.env.VITE_API_URL as string | undefined) || undefined;
 const isLocalMachine = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -21,10 +21,18 @@ export const api = axios.create({
   },
 });
 
-api.interceptors.request.use((config) => {
+type SessionRequest = InternalAxiosRequestConfig & { session?: number; sessionToken?: string | null; retried?: boolean };
+type SessionTokens = { access_token: string; refresh_token?: string; user?: unknown };
+
+let sessionVersion = 0;
+let refresh: { version: number; token: string; result: Promise<void> } | undefined;
+
+api.interceptors.request.use((config: SessionRequest) => {
   if (apiBaseUrl === null) {
     return Promise.reject(new Error(apiUnavailableReason as string));
   }
+  config.session = sessionVersion;
+  config.sessionToken = localStorage.getItem('refresh_token');
   const token = localStorage.getItem('token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -34,79 +42,86 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-/** Auth keys only — theme and notification preferences share localStorage
- * and must survive signing out or an expired session. */
 export function clearAuthKeys(): void {
+  sessionVersion++;
   localStorage.removeItem('token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('user');
 }
 
-function redirectToLogin(): void {
-  if (window.location.pathname !== '/login') {
-    window.location.href = '/login';
+export function storeSession(tokens: SessionTokens): void {
+  clearAuthKeys();
+  localStorage.setItem('token', tokens.access_token);
+  if (tokens.refresh_token) localStorage.setItem('refresh_token', tokens.refresh_token);
+  if (tokens.user) localStorage.setItem('user', JSON.stringify(tokens.user));
+}
+
+export function safeReturnTo(path: string | null): string {
+  if (!path?.startsWith('/') || path.startsWith('//') || path.includes('\\')) return '/dashboard';
+  try {
+    const target = new URL(path, window.location.origin);
+    const page = decodeURI(target.pathname).replace(/\/+$/, '').toLowerCase();
+    if (target.origin !== window.location.origin || page === '/login') return '/dashboard';
+    return target.pathname + target.search + target.hash;
+  } catch {
+    return '/dashboard';
   }
 }
 
-// Access tokens live 30 minutes. On a 401, exchange the stored refresh
-// token once and retry the original request instead of stranding the user
-// on pages that keep failing. Concurrent 401s queue behind one refresh;
-// if the refresh fails the session is over and the user signs in again.
-let isRefreshing = false;
-let refreshQueue: Array<(token: string | null) => void> = [];
+export function signInUrl(path: string, expired = false): string {
+  const query = new URLSearchParams({ returnTo: safeReturnTo(path) });
+  if (expired) query.set('expired', '1');
+  return '/login?' + query;
+}
 
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const original = error.config as (typeof error.config & { _retry?: boolean }) | undefined;
-    const status = error.response?.status;
-    const url = typeof original?.url === 'string' ? original.url : '';
-    const isAuthCall = url.includes('/auth/login') || url.includes('/auth/refresh');
-    if (status !== 401 || !original || original._retry || isAuthCall) {
-      return Promise.reject(error);
+function expireSession() {
+  clearAuthKeys();
+  const { pathname, search, hash } = window.location;
+  if (pathname !== '/login') window.location.replace(signInUrl(pathname + search + hash, true));
+}
+
+function refreshSession(token: string, version: number): Promise<void> {
+  if (refresh?.token === token && refresh.version === version) return refresh.result;
+
+  const result = api.post<SessionTokens>('/auth/refresh', { refresh_token: token }).then(({ data }) => {
+    if (sessionVersion !== version || localStorage.getItem('refresh_token') !== token) return;
+    localStorage.setItem('token', data.access_token);
+    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
+  }).finally(() => {
+    if (refresh?.result === result) refresh = undefined;
+  });
+  refresh = { version, token, result };
+  return result;
+}
+
+api.interceptors.response.use(response => response, async error => {
+  const request = error.config as SessionRequest | undefined;
+  if (error.response?.status !== 401 || !request || request.session !== sessionVersion ||
+      request.url?.startsWith('/auth/') || request.signal?.aborted) throw error;
+
+  const accessToken = localStorage.getItem('token');
+  const sentToken = request.headers.get('Authorization');
+  // A response from before a manual sign-out must never refresh that session.
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!accessToken || !sentToken || request.sessionToken !== refreshToken) throw error;
+  const version = sessionVersion;
+
+  if (sentToken === `Bearer ${accessToken}`) {
+    if (request.retried || !refreshToken) {
+      expireSession();
+      throw error;
     }
-
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (!refreshToken) {
-      clearAuthKeys();
-      redirectToLogin();
-      return Promise.reject(error);
-    }
-
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        refreshQueue.push((token) => {
-          if (!token) {
-            reject(error);
-            return;
-          }
-          original.headers.Authorization = `Bearer ${token}`;
-          resolve(api(original));
-        });
-      });
-    }
-
-    original._retry = true;
-    isRefreshing = true;
     try {
-      const res = await api.post('/auth/refresh', { refresh_token: refreshToken });
-      const newToken = res.data.access_token as string;
-      localStorage.setItem('token', newToken);
-      if (res.data.refresh_token) {
-        localStorage.setItem('refresh_token', res.data.refresh_token);
-      }
-      refreshQueue.forEach((cb) => cb(newToken));
-      refreshQueue = [];
-      original.headers.Authorization = `Bearer ${newToken}`;
-      return api(original);
+      await refreshSession(refreshToken, version);
     } catch (refreshError) {
-      refreshQueue.forEach((cb) => cb(null));
-      refreshQueue = [];
-      clearAuthKeys();
-      redirectToLogin();
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
+      if (sessionVersion === version && localStorage.getItem('refresh_token') === refreshToken &&
+          axios.isAxiosError(refreshError) && [400, 401, 403].includes(refreshError.response?.status ?? 0)) {
+        expireSession();
+      }
+      throw refreshError;
     }
-  },
-);
+  }
+  if (request.retried || sessionVersion !== version || request.signal?.aborted || !localStorage.getItem('token')) throw error;
+  request.retried = true;
+  return api(request);
+});

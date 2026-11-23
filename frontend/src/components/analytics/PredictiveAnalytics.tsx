@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { z } from 'zod/mini';
 import { api } from '../../services/api';
-import { apiMessage, Notice, PageHeader, SectionHeading } from '../common/Workspace';
+import { apiMessage, Notice, PageHeader, SectionHeading, TextLink } from '../common/Workspace';
 
 interface LogResult { is_threat: boolean; classification: string; confidence: number | null; method?: string }
+interface EventContext { action?: string; actor?: string; region?: string; time?: string; bucket?: string }
 interface MetricResult { is_anomaly?: boolean | null; anomaly_score?: number | null; algorithm?: string; method?: string; error?: string }
 
 const sampleLog = JSON.stringify({
@@ -15,6 +16,22 @@ const sampleLog = JSON.stringify({
 const sampleMetrics = '0.85, 0.92, 0.44, 0.12, 0.76, 0.99, 0.05, 0.81';
 const logInput = z.string().check(z.trim(), z.minLength(1, 'Enter a log event to review.'));
 const metricInput = z.array(z.number()).check(z.length(8));
+
+function cloudTrailContext(payload: string): EventContext {
+  try {
+    const log = JSON.parse(payload);
+    const string = (value: unknown) => typeof value === 'string' && value.trim() ? value : undefined;
+    return {
+      action: string(log?.eventName),
+      actor: string(log?.userIdentity?.arn) ?? string(log?.userIdentity?.userName) ?? string(log?.userIdentity?.type),
+      region: string(log?.awsRegion),
+      time: string(log?.eventTime),
+      bucket: string(log?.requestParameters?.bucketName),
+    };
+  } catch {
+    return {};
+  }
+}
 
 function MetricOutcome({ data }: { data: MetricResult }) {
   if (data.method === 'unavailable' || data.is_anomaly == null) {
@@ -30,7 +47,7 @@ function MetricOutcome({ data }: { data: MetricResult }) {
 export function PredictiveAnalytics() {
   const [logText, setLogText] = useState(sampleLog);
   const [metricsText, setMetricsText] = useState(sampleMetrics);
-  const [logResult, setLogResult] = useState<LogResult | null>(null);
+  const [logResult, setLogResult] = useState<{ result: LogResult; context: EventContext } | null>(null);
   const [metricResult, setMetricResult] = useState<MetricResult | null>(null);
   const [logError, setLogError] = useState('');
   const [metricError, setMetricError] = useState('');
@@ -49,7 +66,7 @@ export function PredictiveAnalytics() {
     setLogLoading(true);
     try {
       const { data } = await api.post<LogResult>('/vulnerabilities/analyze-log', { log_payload: logText });
-      setLogResult(data);
+      setLogResult({ result: data, context: cloudTrailContext(logText) });
     } catch (error) {
       setLogError(apiMessage(error, 'Could not review the log. Try again.'));
     } finally {
@@ -78,7 +95,7 @@ export function PredictiveAnalytics() {
   }
 
   return <div className="page">
-    <PageHeader title="Log and metric review" description="Scanner severity uses CVSS rules. These experimental tools flag inputs for human review." />
+    <PageHeader title="Log and metric review" description="Review CloudTrail events and metric readings. Scanner severity uses CVSS rules." />
     <div className="split analytics-split">
       <section className="ledger">
         <SectionHeading title="CloudTrail log review" />
@@ -88,13 +105,23 @@ export function PredictiveAnalytics() {
             <label htmlFor="log-payload">Event payload</label>
             <textarea id="log-payload" className="mono" rows={9} spellCheck={false} value={logText} onChange={event => setLogText(event.target.value)} />
           </div>
-          <div className="form-actions"><button type="submit" className="button primary" disabled={logLoading}>{logLoading ? 'Reviewing…' : 'Review log'}</button></div>
+          <div className="form-actions">
+            <button type="submit" className="button primary" disabled={logLoading}>{logLoading ? 'Reviewing…' : 'Review log'}</button>
+            {logText !== sampleLog && <button type="button" className="button" disabled={logLoading} onClick={() => { setLogText(sampleLog); setLogError(''); setLogResult(null); }}>Load sample</button>}
+          </div>
           {logError && <Notice tone="error">{logError}</Notice>}
-          {logResult && <Notice tone={logResult.is_threat ? 'warning' : 'info'}>
-            <strong>{logResult.is_threat ? 'Flagged for review' : 'No flag. Review the event in context.'}</strong>
-            <p>Uncalibrated score: {logResult.confidence != null && Number.isFinite(logResult.confidence) ? logResult.confidence.toFixed(3) : 'unavailable'}</p>
-            <p className="meta">Method: {logResult.method?.replace(/_/g, ' ') || 'unspecified'}</p>
-          </Notice>}
+          {logResult && <div className="stack">
+            <Notice tone={logResult.result.is_threat ? 'warning' : 'info'}>
+              <strong>{logResult.result.is_threat ? 'Flagged for review' : 'No flag. Review the event in context.'}</strong>
+              {logResult.result.confidence != null && Number.isFinite(logResult.result.confidence) && <p>Uncalibrated score {logResult.result.confidence.toFixed(3)}</p>}
+              {logResult.result.method && <p className="meta">{logResult.result.method.replace(/_/g, ' ')}</p>}
+            </Notice>
+            {Object.values(logResult.context).some(Boolean) && <dl className="event-context">
+              {([['Action', logResult.context.action], ['Actor', logResult.context.actor], ['Region', logResult.context.region], ['Time', logResult.context.time]] as const)
+                .map(([label, value]) => value && <div className="line-row" key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+              {logResult.context.bucket && <div className="line-row"><dt>Bucket</dt><dd><TextLink to={`/vulnerabilities?${new URLSearchParams({ q: logResult.context.bucket })}`}>{logResult.context.bucket}</TextLink></dd></div>}
+            </dl>}
+          </div>}
         </form>
       </section>
       <section className="ledger">

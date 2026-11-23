@@ -127,17 +127,21 @@ export function ScanList() {
         {scans?.length === 0 && <EmptyState title="No scans yet"><p>Choose a cloud account to run its first checks.</p><button type="button" className="text-link" onClick={openModal}>Start a scan</button></EmptyState>}
         {!!scans?.length && <div className="table-wrap" tabIndex={0} role="region" aria-label="Scan history table">
           <table className="ledger-table scan-table">
-            <thead><tr><th scope="col">Cloud account</th><th scope="col">Status</th><th scope="col">Progress</th><th scope="col">Findings</th><th scope="col">Started</th></tr></thead>
+            <thead><tr><th scope="col">Cloud account</th><th scope="col">Status</th><th scope="col">Progress</th><th scope="col">Findings</th><th scope="col">Started</th><th scope="col">Results</th></tr></thead>
             <tbody>{scans.map(scan => {
               const account = accounts.find(account => account.id === scan.cloud_account_id);
               const status = scanStatuses[scan.status] || { label: scan.status, tone: 'neutral' };
               const finished = scan.status === 'COMPLETED' || scan.status === 'DEMO_COMPLETED';
               return <tr key={scan.id}>
-                <td><span className="row-title" title={scan.cloud_account_id}>{account?.name || scan.cloud_account_id}</span><small className="mono" title={scan.id}>{scan.id.slice(0, 12)}{scan.id.length > 12 && '…'}</small></td>
+                <td><span className="row-title" title={scan.cloud_account_id}>{account?.name || scan.cloud_account_id}</span><small className="mono" title={scan.id}>{scan.id.slice(0, 12)}{scan.id.length > 12 && '…'}</small>
+                  <small className="table-mobile-detail">{Math.round(scan.progress)}% · {finished ? `${scan.vulnerabilities_found} findings` : scan.status === 'FAILED' ? 'Run failed' : 'Results pending'}</small>
+                  <small className="table-mobile-detail">{dateTime.format(new Date(scan.created_at))}</small>
+                  {finished && <span className="table-mobile-detail"><TextLink to={`/policies?${new URLSearchParams({ scan: scan.id })}`}>Checks</TextLink></span>}</td>
                 <td><Status tone={status.tone}>{status.label}</Status></td>
                 <td><div className="meter-row"><Meter value={scan.progress} label={`Progress for scan ${scan.id}`} tone={status.tone} /><span className="number">{Math.round(scan.progress)}%</span></div></td>
                 <td className="number">{finished ? scan.vulnerabilities_found : '—'}</td>
                 <td><time dateTime={scan.created_at}>{dateTime.format(new Date(scan.created_at))}</time></td>
+                <td>{finished ? <TextLink to={`/policies?${new URLSearchParams({ scan: scan.id })}`}>Checks</TextLink> : '—'}</td>
               </tr>;
             })}</tbody>
           </table>

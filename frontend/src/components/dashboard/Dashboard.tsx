@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { LoadingSpinner } from '../common/LoadingSpinner';
-import { apiMessage, EmptyState, Meter, Notice, PageHeader, SectionHeading, Severity, severityLabels, severityTones, TextLink } from '../common/Workspace';
+import { apiMessage, EmptyState, Meter, Notice, PageHeader, SectionHeading, Severity, severityLabels, severityTones, Status, TextLink } from '../common/Workspace';
 
 interface ScanResult {
   status: string;
@@ -80,8 +80,14 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  async function refresh(signal?: AbortSignal) {
-    setLoading(true);
+  const currentRequest = useRef<AbortController | null>(null);
+
+  const refresh = useCallback(async (background = false) => {
+    if (currentRequest.current) return;
+    const request = new AbortController();
+    currentRequest.current = request;
+    const { signal } = request;
+    if (!background) setLoading(true);
     setError('');
     try {
       const [scans, findings, summary, frameworks] = await Promise.allSettled([
@@ -103,19 +109,28 @@ export function Dashboard() {
     } catch (error) {
       if (!signal?.aborted) setError(apiMessage(error, 'Could not load cloud posture. Try refreshing.'));
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (currentRequest.current === request) {
+        currentRequest.current = null;
+        setLoading(false);
+      }
     }
-  }
+  }, []);
 
   useEffect(() => {
-    const request = new AbortController();
-    void refresh(request.signal);
-    return () => request.abort();
-  }, []);
+    void refresh();
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refresh(true);
+    }, 30_000);
+    return () => {
+      window.clearInterval(poll);
+      currentRequest.current?.abort();
+      currentRequest.current = null;
+    };
+  }, [refresh]);
 
   const header = <PageHeader title="Cloud posture" description="Evaluated checks and findings across your cloud scans."
     action={<>
-      {snapshot && <time className="meta" dateTime={snapshot.updated.toISOString()}>Updated {shortTime.format(snapshot.updated)}</time>}
+      {snapshot && <span className="refresh-status"><Status>{error ? 'Refresh failed' : 'Auto-refresh'}</Status><time className="meta" dateTime={snapshot.updated.toISOString()}>Updated {shortTime.format(snapshot.updated)}</time></span>}
       <button className="button" type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={16} aria-hidden="true" />{loading ? 'Refreshing…' : 'Refresh'}</button>
     </>} />;
 
@@ -132,7 +147,7 @@ export function Dashboard() {
     ? summary.severity_distribution?.[severity] ?? 0
     : activeFindings.filter(finding => finding.severity === severity).length;
   const maxSeverity = Math.max(1, ...severities.map(count));
-  const priority = findings.filter(finding => finding.status !== 'REMEDIATED' && (finding.severity === 'CRITICAL' || finding.severity === 'HIGH'))
+  const priority = findings.filter(finding => ['OPEN', 'IN_PROGRESS'].includes(finding.status) && (finding.severity === 'CRITICAL' || finding.severity === 'HIGH'))
     .sort((a, b) => (b.cvss_score ?? 0) - (a.cvss_score ?? 0)).slice(0, 5);
   const resources = Object.entries(summary?.resource_distribution ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const frameworkEntries = Object.entries(frameworks ?? {}).sort((a, b) => a[1] - b[1]);
@@ -142,37 +157,37 @@ export function Dashboard() {
     {header}
     {error && <Notice tone="error">Showing data from the last successful refresh. {error}</Notice>}
     <div className="stack-lg">
+      <dl className="posture-totals" aria-label="Scan totals">
+        <div><dt>Scan runs</dt><dd className="number">{scans.length}</dd></div>
+        <div><dt>Open findings</dt><dd className="number">{summary?.total_open_vulnerabilities ?? activeFindings.length}</dd></div>
+        <div><dt>Critical open</dt><dd className="number" data-tone="error">{count('CRITICAL')}</dd></div>
+        <div><dt>Scans running</dt><dd className="number">{scans.filter(scan => ['PENDING', 'RUNNING'].includes(scan.status)).length}</dd></div>
+      </dl>
       <div className="split dashboard-top">
-        <section className="posture-block" aria-labelledby="pass-rate-heading">
+        <section className="ledger posture-block" aria-labelledby="pass-rate-heading">
+          <SectionHeading title="Compliance over time" id="pass-rate-heading" action={<TextLink to="/policies">Policy checks</TextLink>} />
           <div className="posture-inner">
-            <p className="posture-label" id="pass-rate-heading">Check pass rate</p>
-            <p className="posture-number number">{rate === null ? '—' : <>{rate}<span>%</span></>}</p>
-            <p className="muted">{checks ? `${passed} of ${checks} checks passed across finished scans.` : 'No checks have been evaluated yet.'}</p>
-            {rate !== null && <Meter value={rate} label="Check pass rate" />}
-            {points.some(point => point.sample) && <p className="meta">Includes checks from sample scans.</p>}
-            {rate === null && <TextLink to="/settings/accounts">Set up a cloud account</TextLink>}
+            <div className="posture-reading">
+              <div><p className="posture-label">Check pass rate</p>
+                <p className="posture-number number">{rate === null ? '—' : <>{rate}<span>%</span></>}</p></div>
+              <div><p className="muted">{checks ? `${passed} of ${checks} checks passed across finished scans.` : 'No checks have been evaluated yet.'}</p>
+              {points.some(point => point.sample) && <p className="meta">Includes checks from sample scans.</p>}
+              {rate === null && <TextLink to="/settings/accounts">Set up a cloud account</TextLink>}</div>
+            </div>
+            <ComplianceTrend points={points} />
           </div>
-          <dl className="posture-totals">
-            <div><dt>Scan runs</dt><dd className="number">{scans.length}</dd></div>
-            <div><dt>Open findings</dt><dd className="number">{summary?.total_open_vulnerabilities ?? activeFindings.length}</dd></div>
-            <div><dt>Critical open</dt><dd className="number" data-tone="error">{count('CRITICAL')}</dd></div>
-          </dl>
         </section>
         <section className="ledger priority-ledger">
           <SectionHeading title="Priority findings" action={<TextLink to="/vulnerabilities">All findings</TextLink>} />
           {priority.length ? <ul>{priority.map(finding => <li key={finding.id}>
-            <Link to="/vulnerabilities" state={{ findingId: finding.id }} className="line-row priority-row">
+            <Link to={`/vulnerabilities?${new URLSearchParams({ finding: finding.id })}`} className="line-row priority-row">
               <span><span className="row-title">{finding.title}</span><small>{finding.resource_type} / {finding.resource_id}</small></span>
               <span className="priority-score"><Severity value={finding.severity} />{finding.cvss_score != null && <strong className="number">{finding.cvss_score.toFixed(1)}</strong>}</span>
             </Link>
           </li>)}</ul> : <EmptyState title="No critical or high findings found"><p>Findings from finished scans appear here.</p></EmptyState>}
         </section>
       </div>
-      <div className="split">
-        <section className="ledger">
-          <SectionHeading title="Compliance over time" />
-          <ComplianceTrend points={points} />
-        </section>
+      <div className="split dashboard-breakdowns">
         <section className="ledger">
           <SectionHeading title="Open findings by severity" />
           <dl className="severity-list">{severities.map(severity => <div key={severity} className="line-row">
@@ -180,10 +195,8 @@ export function Dashboard() {
           </div>)}</dl>
           {summary && summary.total_open_vulnerabilities > 0 && <p className="meta section-body">Average CVSS {summary.average_cvss_score.toFixed(1)}</p>}
         </section>
-      </div>
-      <div className="split">
         <section className="ledger">
-          <SectionHeading title="Framework scores" />
+          <SectionHeading title="Framework scores" action={<TextLink to="/policies">View results</TextLink>} />
           {frameworkEntries.length ? <dl>{frameworkEntries.map(([name, score]) => <div key={name} className="line-row framework-row">
             <dt>{name.replace(/_/g, ' ')}</dt><dd className="meter-row"><Meter value={score} label={`${name} pass rate`} /><strong className="number">{score.toFixed(1).replace(/\.0$/, '')}%</strong></dd>
           </div>)}</dl> : <EmptyState title={frameworks ? 'No framework scores yet' : 'Framework scores unavailable'}><p>{frameworks ? 'Scores appear after a scan evaluates controls.' : 'Refresh to try loading the scores again.'}</p></EmptyState>}

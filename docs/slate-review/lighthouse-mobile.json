@@ -1,0 +1,48 @@
+{
+  "sign-in": {
+    "lighthouse": "13.6.0",
+    "chromium": "156.0.0.0",
+    "formFactor": "mobile",
+    "route": "/login",
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 100,
+      "seo": 60,
+      "agentic-browsing": 100
+    },
+    "metrics": {
+      "largest-contentful-paint": 760.83,
+      "first-contentful-paint": 760.83,
+      "cumulative-layout-shift": 0,
+      "total-blocking-time": 9,
+      "speed-index": 760.83
+    },
+    "failedBinaryAudits": [
+      "is-crawlable"
+    ]
+  },
+  "overview": {
+    "lighthouse": "13.6.0",
+    "chromium": "156.0.0.0",
+    "formFactor": "mobile",
+    "route": "/dashboard",
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 100,
+      "seo": 60,
+      "agentic-browsing": 100
+    },
+    "metrics": {
+      "largest-contentful-paint": 1296.5,
+      "first-contentful-paint": 609.89,
+      "cumulative-layout-shift": 0,
+      "total-blocking-time": 13,
+      "speed-index": 609.89
+    },
+    "failedBinaryAudits": [
+      "is-crawlable"
+    ]
+  }
+}

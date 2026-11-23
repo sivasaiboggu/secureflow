@@ -6,14 +6,15 @@ from app.config.database import get_db
 from app.api.deps import get_current_user
 from app.database.models import User, Vulnerability, Remediation
 from app.schemas.vulnerability import (
-    VulnerabilityResponse, RemediationApply, RemediationResponse, 
+    VulnerabilityResponse, FindingTriage, RemediationApply, RemediationResponse,
     LogAnalysisRequest, MetricAnalysisRequest
 )
 from app.services.scan_service import scan_service
 from app.services.ml_service import ml_service
+from app.services.vulnerability_service import StaleFindingStatus, VALID_STATUSES, vulnerability_service
 
 VALID_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW"}
-VALID_VULNERABILITY_STATUSES = {"OPEN", "IN_PROGRESS", "REMEDIATED", "IGNORED"}
+VALID_VULNERABILITY_STATUSES = VALID_STATUSES
 
 router = APIRouter()
 
@@ -21,6 +22,7 @@ router = APIRouter()
 def get_vulnerabilities(
     severity: Optional[str] = None,
     status: Optional[str] = None,
+    search: Optional[str] = Query(None, max_length=200),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -43,7 +45,7 @@ def get_vulnerabilities(
             detail=f"Invalid status. Must be one of: {', '.join(sorted(VALID_VULNERABILITY_STATUSES))}.",
         )
     vulnerabilities = scan_service.list_vulnerabilities(
-        db, current_user.organization_id, severity, status, skip, limit
+        db, current_user.organization_id, severity, status, skip, limit, search=search
     )
     return vulnerabilities
 
@@ -58,6 +60,27 @@ def get_vulnerability_details(
     if not vuln:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found.")
     return vuln
+
+@router.patch("/{vulnerability_id}/triage", response_model=VulnerabilityResponse)
+def update_finding_triage(
+    vulnerability_id: str,
+    payload: FindingTriage,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Records an analyst's triage decision and its audit entry."""
+    try:
+        finding = vulnerability_service.update_status(
+            db, vulnerability_id, payload.status, current_user.email, current_user.organization_id,
+            expected_status=payload.expected_status, user_id=current_user.id,
+        )
+    except StaleFindingStatus:
+        raise HTTPException(status_code=409, detail="This finding changed. Review its current status before saving.") from None
+
+    if not finding:
+        raise HTTPException(status_code=404, detail="Finding not found.")
+    return finding
+
 
 @router.post("/remediate", response_model=RemediationResponse)
 def trigger_automated_remediation(

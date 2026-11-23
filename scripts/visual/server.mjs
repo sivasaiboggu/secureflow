@@ -2,17 +2,30 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import { resolve, extname } from 'node:path';
-import { fixture } from './fixtures.mjs';
+import { createFixture } from './fixtures.mjs';
 
 const mime = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 
 export async function serve(dist, port = 0) {
   const root = resolve(dist);
+  const fixture = createFixture();
   const server = createServer(async (req, res) => {
-    const { pathname } = new URL(req.url, 'http://localhost');
+    const { pathname, searchParams } = new URL(req.url, 'http://localhost');
     if (pathname.startsWith('/api/v1/')) {
-      req.resume();
-      const data = fixture(pathname.slice('/api/v1'.length), req.method);
+      let body;
+      if (req.method === 'PATCH') {
+        const chunks = [];
+        for await (const chunk of req) chunks.push(chunk);
+        try {
+          body = JSON.parse(Buffer.concat(chunks).toString());
+        } catch {
+          res.writeHead(400).end();
+          return;
+        }
+      } else {
+        req.resume();
+      }
+      const data = fixture(pathname.slice('/api/v1'.length), req.method, searchParams, body);
       res.writeHead(data === null ? 404 : 200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(data));
       return;

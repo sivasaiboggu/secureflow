@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from app.utils.timestamps import utcnow
-from sqlalchemy import func
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from app.database.models import Scan, CloudAccount, Vulnerability, ComplianceCheck, Remediation
@@ -97,13 +97,21 @@ class ScanService:
                              .offset(skip).limit(limit).all()
 
     def list_vulnerabilities(self, db: Session, organization_id: str, severity: Optional[str] = None, 
-                             status: Optional[str] = None, skip: int = 0, limit: int = 50) -> List[Vulnerability]:
+                             status: Optional[str] = None, skip: int = 0, limit: int = 50,
+                             *, search: Optional[str] = None) -> List[Vulnerability]:
         query = db.query(Vulnerability).join(Scan).filter(Scan.organization_id == organization_id)
         if severity:
             query = query.filter(Vulnerability.severity == severity.upper())
         if status:
             query = query.filter(Vulnerability.status == status.upper())
-        return query.order_by(Vulnerability.cvss_score.desc()).offset(skip).limit(limit).all()
+        if search and search.strip():
+            term = search.strip().lower()
+            columns = (
+                Vulnerability.title, Vulnerability.resource_id, Vulnerability.resource_name,
+                Vulnerability.vulnerability_type, Vulnerability.resource_type,
+            )
+            query = query.filter(or_(*(func.lower(column).contains(term, autoescape=True) for column in columns)))
+        return query.order_by(Vulnerability.cvss_score.desc().nulls_last(), Vulnerability.id).offset(skip).limit(limit).all()
 
     def get_vulnerability(self, db: Session, vulnerability_id: str, organization_id: str) -> Optional[Vulnerability]:
         return db.query(Vulnerability).join(Scan).filter(

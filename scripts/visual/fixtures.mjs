@@ -28,18 +28,55 @@ const USERS = [
   { email: 'teammate@example.com', full_name: 'Teammate One', role: 'user', is_active: true },
 ];
 
-export function fixture(p, method) {
-  if (method === 'POST' && p === '/auth/login') return { access_token: 'synthetic-shot-token', refresh_token: 'synthetic-shot-refresh', token_type: 'bearer', user: USERS[0] };
-  if (method === 'POST' && p === '/scans') return { id: 'queued-scan', status: 'PENDING' };
-  if (method === 'POST' && p === '/scans/cloud-accounts') return { id: 'new-account' };
-  if (method === 'POST' && p === '/vulnerabilities/remediate') return { status: 'PLAN_SAVED' };
-  if (p === '/scans') return SCANS;
-  if (p === '/vulnerabilities') return VULNS;
-  if (p === '/analytics/summary') return SUMMARY;
-  if (p === '/compliance/summary') return COMPLIANCE;
-  if (p === '/scans/cloud-accounts') return ACCOUNTS;
-  if (p === '/users') return USERS;
-  if (p === '/vulnerabilities/analyze-log') return { is_threat: true, confidence: null, classification: 'FLAGGED', method: 'heuristic_rules', calibrated: false };
-  if (p === '/vulnerabilities/analyze-metrics') return { is_anomaly: null, anomaly_score: null, method: 'unavailable', calibrated: false, error: 'No local anomaly model is available. No assessment was performed.' };
-  return null;
+const CHECKS = [
+  { id: 'check-1', scan_id: SCANS[0].id, framework: 'CIS', control_id: '2.1.5', title: 'Block public access to S3 buckets', status: 'FAIL',
+    resource_id: VULNS[0].resource_id, checked_at: SCANS[0].completed_at, sample: true, control_level: true, violating_resources: [VULNS[0].resource_id] },
+  { id: 'check-2', scan_id: SCANS[0].id, framework: 'CIS', control_id: '2.1.1', title: 'Encrypt new objects in S3', status: 'FAIL',
+    resource_id: VULNS[1].resource_id, checked_at: SCANS[0].completed_at, sample: true, control_level: true, violating_resources: [VULNS[1].resource_id] },
+  { id: 'check-3', scan_id: SCANS[0].id, framework: 'CIS', control_id: '1.2', title: 'Require MFA for IAM users with a password', status: 'PASS',
+    resource_id: 'demo-account-id', checked_at: SCANS[0].completed_at, sample: true, control_level: true, violating_resources: [] },
+  { id: 'check-4', scan_id: SCANS[1].id, framework: 'CIS', control_id: '4.3', title: 'Enable VPC flow logs', status: 'FAIL',
+    resource_id: VULNS[3].resource_id, checked_at: SCANS[1].completed_at, sample: false, control_level: false, violating_resources: [] },
+];
+
+export function createFixture() {
+  const findings = VULNS.map(finding => ({ ...finding, scan_id: SCANS[0].id }));
+  return function fixture(p, method, params, body) {
+    const detail = p.match(/^\/vulnerabilities\/(v-\d+)(\/triage)?$/);
+    if (detail) {
+      const finding = findings.find(item => item.id === detail[1]);
+      if (!finding) return null;
+      if (method === 'PATCH' && detail[2]) finding.status = body.status;
+      return finding;
+    }
+    if (p === '/vulnerabilities') {
+      const term = params.get('search')?.toLowerCase();
+      const severity = params.get('severity');
+      const status = params.get('status');
+      const start = Number(params.get('skip') || 0);
+      const end = start + Number(params.get('limit') || 50);
+      return findings.filter(finding => (!severity || finding.severity === severity) && (!status || finding.status === status) &&
+        (!term || [finding.title, finding.resource_id, finding.resource_name, finding.resource_type, finding.vulnerability_type]
+          .some(value => value?.toLowerCase().includes(term)))).slice(start, end);
+    }
+    if (p === '/compliance/checks') {
+      const scan = params.get('scan_id');
+      const status = params.get('status');
+      const start = Number(params.get('skip') || 0);
+      const end = start + Number(params.get('limit') || 50);
+      return CHECKS.filter(check => (!scan || check.scan_id === scan) && (!status || check.status === status)).slice(start, end);
+    }
+    if (method === 'POST' && p === '/auth/login') return { access_token: 'synthetic-shot-token', refresh_token: 'synthetic-shot-refresh', token_type: 'bearer', user: USERS[0] };
+    if (method === 'POST' && p === '/scans') return { id: 'queued-scan', status: 'PENDING' };
+    if (method === 'POST' && p === '/scans/cloud-accounts') return { id: 'new-account' };
+    if (method === 'POST' && p === '/vulnerabilities/remediate') return { status: 'PLAN_SAVED' };
+    if (p === '/scans') return SCANS;
+    if (p === '/analytics/summary') return SUMMARY;
+    if (p === '/compliance/summary') return COMPLIANCE;
+    if (p === '/scans/cloud-accounts') return ACCOUNTS;
+    if (p === '/users') return USERS;
+    if (p === '/vulnerabilities/analyze-log') return { is_threat: true, confidence: null, classification: 'FLAGGED', method: 'heuristic_rules', calibrated: false };
+    if (p === '/vulnerabilities/analyze-metrics') return { is_anomaly: null, anomaly_score: null, method: 'unavailable', calibrated: false, error: 'No local anomaly model is available. No assessment was performed.' };
+    return null;
+  }
 }
